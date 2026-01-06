@@ -33,6 +33,7 @@ export function RootNavigator() {
             fontSize: 20,
             fontWeight: '900',
           },
+          headerTitleAlign: 'center',
           headerTintColor: colors.primary,
           headerShadowVisible: false,
         }}

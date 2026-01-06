@@ -11,9 +11,21 @@ type IconButtonProps = {
   accessibilityLabel: string;
   disabled?: boolean;
   iconColor?: string;
+  iconSize?: number;
+  buttonSize?: number;
+  variant?: 'plain' | 'outlined';
 };
 
-export function IconButton({ icon, onPress, accessibilityLabel, disabled, iconColor }: IconButtonProps) {
+export function IconButton({
+  icon,
+  onPress,
+  accessibilityLabel,
+  disabled,
+  iconColor,
+  iconSize = 28,
+  buttonSize = 44,
+  variant = 'plain',
+}: IconButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -21,10 +33,15 @@ export function IconButton({ icon, onPress, accessibilityLabel, disabled, iconCo
       onPress={onPress}
       disabled={disabled}
       hitSlop={12}
-      style={({ pressed }) => [styles.button, pressed && !disabled && styles.pressed, disabled && styles.disabled]}
+      style={({ pressed }) => [
+        styles.button,
+        variant === 'outlined' && styles.buttonOutlined,
+        pressed && !disabled && styles.pressed,
+        disabled && styles.disabled,
+      ]}
     >
-      <View style={styles.iconWrap}>
-        <MaterialIcons name={icon} size={28} color={iconColor ?? colors.text} />
+      <View style={[styles.iconWrap, { width: buttonSize, height: buttonSize }]}>
+        <MaterialIcons name={icon} size={iconSize} color={iconColor ?? colors.text} />
       </View>
     </Pressable>
   );
@@ -33,6 +50,11 @@ export function IconButton({ icon, onPress, accessibilityLabel, disabled, iconCo
 const styles = StyleSheet.create({
   button: {
     borderRadius: 999,
+  },
+  buttonOutlined: {
+    borderWidth: 1,
+    borderColor: colors.text,
+    backgroundColor: colors.surface,
   },
   pressed: {
     opacity: 0.85,

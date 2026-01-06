@@ -1,9 +1,11 @@
-import { StyleSheet, Text, View } from 'react-native';
+import type { ImageSourcePropType } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../theme/colors';
 
 type AvatarCircleProps = {
   name: string;
   size?: number;
+  source?: ImageSourcePropType;
 };
 
 function initialsFromName(name: string) {
@@ -13,14 +15,23 @@ function initialsFromName(name: string) {
   return (first + last).toUpperCase();
 }
 
-export function AvatarCircle({ name, size = 54 }: AvatarCircleProps) {
+export function AvatarCircle({ name, size = 54, source }: AvatarCircleProps) {
   const initials = initialsFromName(name);
 
   return (
     <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Text style={styles.initials} allowFontScaling>
-        {initials}
-      </Text>
+      {source ? (
+        <Image
+          source={source}
+          style={{ width: size, height: size, borderRadius: size / 2 }}
+          resizeMode="cover"
+          accessibilityLabel={`${name} avatar`}
+        />
+      ) : (
+        <Text style={styles.initials} allowFontScaling>
+          {initials}
+        </Text>
+      )}
     </View>
   );
 }

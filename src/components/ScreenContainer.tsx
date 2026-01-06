@@ -1,5 +1,12 @@
 import type { ReactNode } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  ImageBackground,
+  ScrollView,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
 
 type ScreenContainerProps = {
@@ -14,28 +21,49 @@ export function ScreenContainer({
   contentContainerStyle,
 }: ScreenContainerProps) {
   if (!scroll) {
-    return <SafeAreaView style={styles.safeArea}>{children}</SafeAreaView>;
+    return (
+      <ImageBackground
+        source={require('../../assets/mmmbcbg.png')}
+        style={styles.background}
+        resizeMode="cover"
+      >
+        <SafeAreaView edges={['left', 'right']} style={styles.safeArea}>
+          {children}
+        </SafeAreaView>
+      </ImageBackground>
+    );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
-        alwaysBounceVertical={false}
-      >
-        {children}
-      </ScrollView>
-    </SafeAreaView>
+    <ImageBackground
+      source={require('../../assets/mmmbcbg.png')}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <SafeAreaView edges={['left', 'right']} style={styles.safeArea}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
+          alwaysBounceVertical={false}
+        >
+          {children}
+        </ScrollView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
   },
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 25,
+    paddingBottom: 25,
     gap: 12,
   },
 });

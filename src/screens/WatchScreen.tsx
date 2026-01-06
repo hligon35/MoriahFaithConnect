@@ -30,10 +30,6 @@ const archiveCategories: ArchiveCategory[] = [
 export function WatchScreen() {
   return (
     <ScreenContainer contentContainerStyle={styles.containerTight}>
-      <Text style={styles.lead} allowFontScaling>
-        Watch services live and browse sermon recordings.
-      </Text>
-
       <View style={styles.liveCardWrap} accessibilityRole="summary">
         <View style={styles.liveRow}>
           <View style={styles.liveTextCol}>
@@ -48,11 +44,13 @@ export function WatchScreen() {
             </Text>
           </View>
 
-          <Image
-            source={require('../../assets/icon.png')}
-            style={styles.liveThumb}
-            accessibilityLabel="Live stream thumbnail"
-          />
+          <View style={styles.liveThumbFrame}>
+            <Image
+              source={require('../../assets/icon.png')}
+              style={styles.liveThumbImage}
+              accessibilityLabel="Live stream thumbnail"
+            />
+          </View>
         </View>
       </View>
 
@@ -91,11 +89,6 @@ const styles = StyleSheet.create({
   containerTight: {
     gap: 8,
   },
-  lead: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '700',
-  },
   bodyText: {
     color: colors.text,
     fontSize: 16,
@@ -131,14 +124,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
   },
-  liveThumb: {
+  liveThumbImage: {
     width: 96,
-    height: '100%',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: colors.background,
+    height: 104 ,
     resizeMode: 'cover',
+    transform: [{ scale: 2 }],
   },
   archiveList: {
     gap: 8,

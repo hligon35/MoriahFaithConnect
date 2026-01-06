@@ -1,3 +1,5 @@
+import type { ImageSourcePropType } from 'react-native';
+
 export type DirectoryMember = {
   id: string;
   name: string;
@@ -5,6 +7,7 @@ export type DirectoryMember = {
   email: string;
   phone: string;
   address: string;
+  photo?: ImageSourcePropType;
 };
 
 // Placeholder directory data (replace with API/backend later)
@@ -16,6 +19,7 @@ export const churchDirectory: DirectoryMember[] = [
     email: 'member@moriahfaithconnect.org',
     phone: '+1 (555) 010-1001',
     address: '123 Church St, Your City, ST 00000',
+    photo: require('../../assets/icon.png'),
   },
   {
     id: 'm-002',

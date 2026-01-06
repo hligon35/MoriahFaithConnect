@@ -1,4 +1,6 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { RootTabParamList } from './types';
 
@@ -16,29 +18,43 @@ import { MaterialIcons } from '@expo/vector-icons';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
+function TabsHeader({ onPressAccount }: { onPressAccount: () => void }) {
+  const insets = useSafeAreaInsets();
+  const extraDrop = Math.round(56 * 0.25);
+
+  return (
+    <View style={[styles.headerWrap, { height: insets.top + 56 + extraDrop }]}
+      accessibilityRole="header"
+    >
+      <SafeAreaView edges={['top']} style={styles.headerSafe}>
+        <View style={styles.headerRow}>
+          <Text style={styles.headerTitle} allowFontScaling>
+            Moriah Faith Connect
+          </Text>
+          <View style={styles.headerRight}>
+            <IconButton
+              icon="account-circle"
+              accessibilityLabel="Account"
+              onPress={onPressAccount}
+              iconColor={colors.primary}
+              iconSize={42}
+              buttonSize={60}
+            />
+          </View>
+        </View>
+      </SafeAreaView>
+      <View style={[styles.headerDrop, { height: extraDrop }]} />
+    </View>
+  );
+}
+
 export function TabsNavigator() {
   const stackNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   return (
     <Tab.Navigator
       screenOptions={{
-        headerTitle: 'Moriah Faith Connect',
-        headerStyle: { backgroundColor: colors.text },
-        headerTitleStyle: {
-          color: colors.primary,
-          fontSize: 20,
-          fontWeight: '900',
-        },
-        headerTintColor: colors.primary,
-        headerShadowVisible: false,
-        headerRight: () => (
-          <IconButton
-            icon="account-circle"
-            accessibilityLabel="Account"
-            onPress={() => stackNav.navigate('Account')}
-            iconColor={colors.primary}
-          />
-        ),
+        header: () => <TabsHeader onPressAccount={() => stackNav.navigate('Account')} />,
 
         tabBarStyle: {
           backgroundColor: colors.text,
@@ -84,3 +100,32 @@ export function TabsNavigator() {
     </Tab.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  headerWrap: {
+    backgroundColor: colors.text,
+  },
+  headerSafe: {
+    backgroundColor: colors.text,
+  },
+  headerRow: {
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  headerTitle: {
+    flex: 1,
+    color: colors.primary,
+    fontSize: 20,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  headerRight: {
+    position: 'absolute',
+    right: 16,
+  },
+  headerDrop: {
+    backgroundColor: colors.text,
+  },
+});

@@ -10,6 +10,7 @@ import {
   FlatList,
 } from 'react-native';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { IconButton } from '../components/IconButton';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { SectionCard } from '../components/SectionCard';
 import { colors } from '../../theme/colors';
@@ -17,8 +18,19 @@ import { churchDirectory, type DirectoryMember } from '../data/churchDirectory';
 import { AvatarCircle } from '../components/AvatarCircle';
 import { MaterialIcons } from '@expo/vector-icons';
 import { defaultPrivacySettings, loadPrivacySettings, type PrivacySettings } from '../storage/privacyPrefs';
-import { prayerWallEntries } from '../data/prayerWall';
+import { prayerWallEntries, type PrayerWallEntry } from '../data/prayerWall';
 import { ministries, type Ministry } from '../data/ministries';
+
+function formatPrayerAge(createdAt: string, now: Date) {
+  const created = new Date(createdAt);
+  if (Number.isNaN(created.getTime())) return '';
+
+  const diffMs = Math.max(0, now.getTime() - created.getTime());
+  const hours = Math.floor(diffMs / (60 * 60 * 1000));
+  if (hours < 24) return `${Math.max(1, hours)}hr`;
+  const days = Math.floor(hours / 24);
+  return `${Math.max(1, days)}d`;
+}
 
 function sanitizePhoneForLinking(phone: string) {
   // Keep leading + and digits only
@@ -53,6 +65,10 @@ export function CommunityScreen() {
   const [selected, setSelected] = useState<DirectoryMember | null>(null);
   const [selectedMinistry, setSelectedMinistry] = useState<Ministry | null>(null);
   const [myPrivacy, setMyPrivacy] = useState<PrivacySettings>(defaultPrivacySettings);
+
+  const [prayers, setPrayers] = useState<PrayerWallEntry[]>(prayerWallEntries);
+  const [addPrayerOpen, setAddPrayerOpen] = useState(false);
+  const [prayerNameDraft, setPrayerNameDraft] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -166,31 +182,110 @@ export function CommunityScreen() {
         </View>
       </View>
 
-      <SectionCard title="Prayer Wall">
+      <SectionCard
+        title="Prayer Wall"
+        headerRight={
+          <IconButton
+            icon="add"
+            accessibilityLabel="Add prayer name"
+            onPress={() => {
+              setPrayerNameDraft('');
+              setAddPrayerOpen(true);
+            }}
+            iconColor={colors.primary}
+            variant="outlined"
+            iconSize={22}
+            buttonSize={34}
+          />
+        }
+      >
         <Text style={styles.bodyText} allowFontScaling>
           Names in need of prayer...
         </Text>
 
         <View style={styles.prayerListWrap}>
-          <FlatList
-            data={prayerWallEntries}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item, index }) => (
-              <View
-                style={[styles.prayerRow, index === 0 && styles.prayerRowFirst]}
-                accessibilityRole="text"
-                accessibilityLabel={`Prayer name: ${item.name}`}
-              >
-                <Text style={styles.prayerName} allowFontScaling>
-                  {item.name}
+          {prayers.map((item, index) => (
+            <View
+              key={item.id}
+              style={[styles.prayerRow, index === 0 && styles.prayerRowFirst]}
+              accessibilityRole="text"
+              accessibilityLabel={`Prayer name: ${item.name}`}
+            >
+              <Text style={styles.prayerName} allowFontScaling numberOfLines={1}>
+                {item.name}
+              </Text>
+              <View style={styles.prayerAgeBadge} accessibilityRole="text">
+                <Text style={styles.prayerAgeText} allowFontScaling>
+                  {formatPrayerAge(item.createdAt, new Date())}
                 </Text>
               </View>
-            )}
-            showsVerticalScrollIndicator
-            nestedScrollEnabled
-          />
+            </View>
+          ))}
         </View>
       </SectionCard>
+
+      <Modal
+        visible={addPrayerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAddPrayerOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalTitleWrap}>
+                <Text style={styles.modalName} allowFontScaling>
+                  Add to Prayer Wall
+                </Text>
+                <Text style={styles.modalRole} allowFontScaling>
+                  Enter a name.
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                onPress={() => setAddPrayerOpen(false)}
+                hitSlop={10}
+              >
+                <MaterialIcons name="close" size={26} color={colors.text} />
+              </Pressable>
+            </View>
+
+            <TextInput
+              value={prayerNameDraft}
+              onChangeText={setPrayerNameDraft}
+              placeholder="Name"
+              placeholderTextColor={colors.text}
+              style={styles.addPrayerInput}
+              autoCorrect={false}
+              autoCapitalize="words"
+              accessibilityLabel="Prayer name"
+            />
+
+            <View style={styles.addPrayerActions}>
+              <PrimaryButton
+                title="Cancel"
+                onPress={() => setAddPrayerOpen(false)}
+              />
+              <PrimaryButton
+                title="Save"
+                onPress={() => {
+                  const name = prayerNameDraft.trim();
+                  if (!name) return;
+
+                  const createdAt = new Date().toISOString();
+                  setPrayers((current) => [
+                    { id: `pw-${Date.now()}`, name, createdAt },
+                    ...current,
+                  ]);
+                  setAddPrayerOpen(false);
+                }}
+                disabled={!prayerNameDraft.trim()}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={!!selected}
@@ -475,6 +570,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   prayerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderTopColor: colors.primary,
@@ -484,9 +582,39 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
   },
   prayerName: {
+    flex: 1,
     color: colors.text,
     fontSize: 16,
     fontWeight: '800',
+  },
+  prayerAgeBadge: {
+    marginLeft: 10,
+    backgroundColor: colors.text,
+    borderColor: colors.primary,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  prayerAgeText: {
+    color: colors.primary,
+    fontSize: 9,
+    fontWeight: '900',
+  },
+  addPrayerInput: {
+    borderColor: colors.primary,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: colors.surface,
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  addPrayerActions: {
+    flexDirection: 'row',
+    gap: 10,
   },
   ministryMetaBox: {
     backgroundColor: colors.background,
