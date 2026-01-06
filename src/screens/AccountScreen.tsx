@@ -144,7 +144,7 @@ export function AccountScreen() {
         <View style={styles.accountRow} accessibilityRole="summary" accessibilityLabel="Account information">
           <AvatarCircle
             name={profile.name}
-            size={64}
+            size={72}
             source={
               profile.avatarMode === 'uploaded' && profile.avatarUri
                 ? { uri: profile.avatarUri }

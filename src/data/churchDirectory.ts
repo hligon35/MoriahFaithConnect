@@ -19,7 +19,6 @@ export const churchDirectory: DirectoryMember[] = [
     email: 'member@moriahfaithconnect.org',
     phone: '+1 (555) 010-1001',
     address: '123 Church St, Your City, ST 00000',
-    photo: require('../../assets/icon.png'),
   },
   {
     id: 'm-002',
