@@ -406,7 +406,7 @@ export function HomeScreen() {
                     </View>
                   </>
                 ) : (
-                  (itineraryService?.itinerary ?? []).map((line, idx) => (
+                  (itineraryService?.itinerary ?? []).map((line: string, idx: number) => (
                     <Text key={`${itineraryService?.id ?? 'svc'}-it-${idx}`} style={styles.itineraryItem} allowFontScaling>
                       • {line}
                     </Text>

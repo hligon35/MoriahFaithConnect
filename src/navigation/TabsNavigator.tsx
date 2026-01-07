@@ -38,14 +38,16 @@ function TabsHeader({ onPressAccount, onPressDev }: { onPressAccount: () => void
       <SafeAreaView edges={['top']} style={styles.headerSafe}>
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
-            <IconButton
-              icon="developer-mode"
+            <Pressable
+              accessibilityRole="button"
               accessibilityLabel="Developer menu"
               onPress={onPressDev}
-              iconColor={colors.primary}
-              iconSize={28}
-              buttonSize={44}
-            />
+              hitSlop={12}
+              pressRetentionOffset={12}
+              style={({ pressed }) => [styles.devButton, pressed && styles.devButtonPressed]}
+            >
+              <MaterialIcons name="developer-mode" size={20} color={colors.text} />
+            </Pressable>
           </View>
           <Text style={styles.headerTitle} allowFontScaling>
             Moriah Faith Connect
@@ -83,6 +85,7 @@ export function TabsNavigator() {
   const stackNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
   const [devMenuOpen, setDevMenuOpen] = useState(false);
+  const { setAdminEnabled } = useAdmin();
   const extraDrop = Math.round(56 * 0.25);
   const devMenuTop = insets.top + 56 + extraDrop;
 
@@ -162,6 +165,7 @@ export function TabsNavigator() {
               title="User View"
               onPress={() => {
                 setDevMenuOpen(false);
+                setAdminEnabled(false);
                 stackNav.navigate('Tabs');
               }}
             />
@@ -169,7 +173,8 @@ export function TabsNavigator() {
               title="Admin View"
               onPress={() => {
                 setDevMenuOpen(false);
-                stackNav.navigate('Admin');
+                setAdminEnabled(true);
+                stackNav.navigate('Tabs');
               }}
             />
           </View>
@@ -195,6 +200,20 @@ const styles = StyleSheet.create({
   headerLeft: {
     position: 'absolute',
     left: 16,
+  },
+  devButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: colors.highlight,
+    borderColor: colors.primary,
+    borderWidth: 1,
+  },
+  devButtonPressed: {
+    opacity: 0.85,
   },
   headerTitle: {
     flex: 1,

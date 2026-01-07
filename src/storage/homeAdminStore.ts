@@ -20,6 +20,7 @@ export type ServiceExtra = {
   title: string;
   timeLabel: string;
   locationLabel: string;
+  itinerary?: string[];
 };
 
 const WORD_KEY = 'mfc.admin.wordSchedule.v1';

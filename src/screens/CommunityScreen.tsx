@@ -828,6 +828,10 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.9,
   },
+  adminInlineAction: {
+    marginTop: 10,
+    alignSelf: 'flex-end',
+  },
   lead: {
     color: colors.text,
     fontSize: 18,
@@ -863,6 +867,11 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 16,
     fontWeight: '800',
+  },
+  prayerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   prayerAgeBadge: {
     marginLeft: 10,
