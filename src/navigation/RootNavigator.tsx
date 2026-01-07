@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { colors } from '../../theme/colors';
 import { AccountScreen } from '../screens/AccountScreen';
+import { AdminScreen } from '../screens/AdminScreen';
 import { TabsNavigator } from './TabsNavigator';
 import type { RootStackParamList } from './types';
 
@@ -43,6 +44,11 @@ export function RootNavigator() {
           name="Account"
           component={AccountScreen}
           options={{ title: 'Account' }}
+        />
+        <Stack.Screen
+          name="Admin"
+          component={AdminScreen}
+          options={{ title: 'Admin' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
