@@ -70,7 +70,7 @@ export function HomeScreen() {
 
   const navigation = useNavigation<HomeNav>();
 
-  const { adminEnabled } = useAdmin();
+  const { adminEnabled, adminViewOnly } = useAdmin();
 
   const [itineraryOpen, setItineraryOpen] = useState(false);
 
@@ -182,36 +182,39 @@ export function HomeScreen() {
   return (
     <ScreenContainer scroll={false}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-        <View style={styles.bannerRow}>
-          <View style={styles.wordBanner} accessibilityRole="summary">
-            <Text style={styles.bannerTitle} allowFontScaling>
-              {wordOfDay.title}
-            </Text>
-            <View style={styles.bannerDivider} />
-            <Text style={styles.bannerWord} allowFontScaling>
-              {wordOfDay.word}
-            </Text>
-            <Text style={styles.bannerMessage} allowFontScaling>
-              {wordOfDay.message}
-            </Text>
-          </View>
-        </View>
+        {!(adminEnabled && adminViewOnly) && (
+          <>
+            <View style={styles.header}>
+              <View style={styles.bannerRow}>
+                <View style={styles.wordBanner} accessibilityRole="summary">
+                  <Text style={styles.bannerTitle} allowFontScaling>
+                    {wordOfDay.title}
+                  </Text>
+                  <View style={styles.bannerDivider} />
+                  <Text style={styles.bannerWord} allowFontScaling>
+                    {wordOfDay.word}
+                  </Text>
+                  <Text style={styles.bannerMessage} allowFontScaling>
+                    {wordOfDay.message}
+                  </Text>
+                </View>
+              </View>
+            </View>
 
-        <SectionCard
-          title="Today’s Services"
-          style={styles.servicesCard}
-          headerRight={
-            <IconButton
-              icon="event-note"
-              accessibilityLabel="Open service itinerary"
-              onPress={() => setItineraryOpen(true)}
-              iconSize={22}
-              buttonSize={36}
-              variant="outlined"
-            />
-          }
-        >
+            <SectionCard
+              title="Today’s Services"
+              style={styles.servicesCard}
+              headerRight={
+                <IconButton
+                  icon="event-note"
+                  accessibilityLabel="Open service itinerary"
+                  onPress={() => setItineraryOpen(true)}
+                  iconSize={22}
+                  buttonSize={36}
+                  variant="outlined"
+                />
+              }
+            >
           {todaysServices.length <= 4 ? (
             <View style={styles.servicesGridRow}>
               {todaysServices.map((item) => {
@@ -313,7 +316,7 @@ export function HomeScreen() {
               }}
             />
           )}
-        </SectionCard>
+            </SectionCard>
 
         <Modal
           visible={itineraryOpen}
@@ -441,6 +444,8 @@ export function HomeScreen() {
             ))}
           </View>
         </SectionCard>
+          </>
+        )}
 
         {adminEnabled && (
           <>
@@ -838,7 +843,6 @@ export function HomeScreen() {
             </View>
           </View>
         </Modal>
-        </View>
       </ScrollView>
     </ScreenContainer>
   );

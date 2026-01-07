@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-import { loadAdminEnabled, saveAdminEnabled } from '../storage/adminPrefs';
+import { loadAdminEnabled, loadAdminViewOnly, saveAdminEnabled, saveAdminViewOnly } from '../storage/adminPrefs';
 import {
   addCollectionEntry,
   computeTotals,
@@ -14,6 +14,9 @@ type AdminContextValue = {
   adminEnabled: boolean;
   setAdminEnabled: (enabled: boolean) => Promise<void>;
 
+  adminViewOnly: boolean;
+  setAdminViewOnly: (viewOnly: boolean) => Promise<void>;
+
   collectionEntries: CollectionEntry[];
   collectionTotals: CollectionTotals;
   refreshCollections: () => Promise<void>;
@@ -24,6 +27,7 @@ const AdminContext = createContext<AdminContextValue | null>(null);
 
 export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [adminEnabled, setAdminEnabledState] = useState(false);
+  const [adminViewOnly, setAdminViewOnlyState] = useState(false);
 
   const [collectionEntries, setCollectionEntries] = useState<CollectionEntry[]>([]);
 
@@ -38,6 +42,10 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       const enabled = await loadAdminEnabled();
       setAdminEnabledState(enabled);
+
+      const viewOnly = await loadAdminViewOnly();
+      setAdminViewOnlyState(viewOnly);
+
       await refreshCollections();
     })();
   }, []);
@@ -45,6 +53,17 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const setAdminEnabled = async (enabled: boolean) => {
     setAdminEnabledState(enabled);
     await saveAdminEnabled(enabled);
+
+    // If admin is turned off, also exit admin-only view.
+    if (!enabled) {
+      setAdminViewOnlyState(false);
+      await saveAdminViewOnly(false);
+    }
+  };
+
+  const setAdminViewOnly = async (viewOnly: boolean) => {
+    setAdminViewOnlyState(viewOnly);
+    await saveAdminViewOnly(viewOnly);
   };
 
   const recordCollection = async (input: { kind: CollectionKind; amountCents: number; userId?: string }) => {
@@ -55,6 +74,10 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const value: AdminContextValue = {
     adminEnabled,
     setAdminEnabled,
+
+    adminViewOnly,
+    setAdminViewOnly,
+
     collectionEntries,
     collectionTotals,
     refreshCollections,

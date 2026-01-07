@@ -85,7 +85,7 @@ export function TabsNavigator() {
   const stackNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
   const [devMenuOpen, setDevMenuOpen] = useState(false);
-  const { setAdminEnabled } = useAdmin();
+  const { setAdminEnabled, setAdminViewOnly } = useAdmin();
   const extraDrop = Math.round(56 * 0.25);
   const devMenuTop = insets.top + 56 + extraDrop;
 
@@ -166,6 +166,7 @@ export function TabsNavigator() {
               onPress={() => {
                 setDevMenuOpen(false);
                 setAdminEnabled(false);
+                setAdminViewOnly(false);
                 stackNav.navigate('Tabs');
               }}
             />
@@ -174,6 +175,7 @@ export function TabsNavigator() {
               onPress={() => {
                 setDevMenuOpen(false);
                 setAdminEnabled(true);
+                setAdminViewOnly(true);
                 stackNav.navigate('Tabs');
               }}
             />
@@ -200,13 +202,15 @@ const styles = StyleSheet.create({
   headerLeft: {
     position: 'absolute',
     left: 16,
+    zIndex: 10,
   },
   devButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
-    height: 38,
+    paddingHorizontal: 12,
+    height: 44,
+    minWidth: 44,
     borderRadius: 14,
     backgroundColor: colors.highlight,
     borderColor: colors.primary,

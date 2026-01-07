@@ -8,7 +8,7 @@ import { useAdmin } from '../state/AdminContext';
 import { exportCollectionCsv } from '../storage/collectionStore';
 
 export function GiveScreen() {
-  const { adminEnabled, collectionEntries, collectionTotals, recordCollection } = useAdmin();
+  const { adminEnabled, adminViewOnly, collectionEntries, collectionTotals, recordCollection } = useAdmin();
   const [donationDraft, setDonationDraft] = useState('');
   const [titheDraft, setTitheDraft] = useState('');
   const [statusText, setStatusText] = useState('');
@@ -28,9 +28,11 @@ export function GiveScreen() {
 
   return (
     <ScreenContainer>
-      <Text style={styles.lead} allowFontScaling>
-        Give securely and conveniently from your phone.
-      </Text>
+      {!adminViewOnly && (
+        <Text style={styles.lead} allowFontScaling>
+          Give securely and conveniently from your phone.
+        </Text>
+      )}
 
       {adminEnabled && (
         <SectionCard title="Admin: Collections">
@@ -137,19 +139,23 @@ export function GiveScreen() {
         </SectionCard>
       )}
 
-      <SectionCard title="Donations">
-        <Text style={styles.bodyText} allowFontScaling>
-          Donation options will appear here.
-        </Text>
-        <PrimaryButton title="Give Now (Coming Soon)" onPress={() => {}} disabled />
-      </SectionCard>
+      {!adminViewOnly && (
+        <>
+          <SectionCard title="Donations">
+            <Text style={styles.bodyText} allowFontScaling>
+              Donation options will appear here.
+            </Text>
+            <PrimaryButton title="Give Now (Coming Soon)" onPress={() => {}} disabled />
+          </SectionCard>
 
-      <SectionCard title="Receipts">
-        <Text style={styles.bodyText} allowFontScaling>
-          Your giving history and receipts will appear here.
-        </Text>
-        <PrimaryButton title="View Receipts (Coming Soon)" onPress={() => {}} disabled />
-      </SectionCard>
+          <SectionCard title="Receipts">
+            <Text style={styles.bodyText} allowFontScaling>
+              Your giving history and receipts will appear here.
+            </Text>
+            <PrimaryButton title="View Receipts (Coming Soon)" onPress={() => {}} disabled />
+          </SectionCard>
+        </>
+      )}
     </ScreenContainer>
   );
 }

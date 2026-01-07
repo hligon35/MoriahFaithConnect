@@ -27,7 +27,7 @@ function formatSelectedDayLabel(dateKey: string) {
 }
 
 export function EventsScreen() {
-  const { adminEnabled } = useAdmin();
+  const { adminEnabled, adminViewOnly } = useAdmin();
 
   const [eventItems, setEventItems] = useState<ChurchEvent[]>(events);
   const [adminAddOpen, setAdminAddOpen] = useState(false);
@@ -115,6 +115,35 @@ export function EventsScreen() {
           <Text style={styles.bodyText} allowFontScaling>
             Add/edit/remove calendar events.
           </Text>
+
+          <View style={styles.adminEventList}>
+            {sorted.slice(0, 12).map((item) => {
+              const startsAt = new Date(item.startsAt);
+              return (
+                <View key={item.id} style={styles.adminEventRow}>
+                  <View style={styles.adminEventInfo}>
+                    <Text style={styles.adminEventTitle} allowFontScaling numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    <Text style={styles.adminEventMeta} allowFontScaling numberOfLines={1}>
+                      {formatLocalDateTime(startsAt)} · {item.location}
+                    </Text>
+                  </View>
+                  <IconButton
+                    icon="delete"
+                    accessibilityLabel={`Delete event ${item.title}`}
+                    onPress={async () => {
+                      const remaining = sorted.filter((e) => e.id !== item.id);
+                      await adminSave(remaining);
+                    }}
+                    iconSize={22}
+                    buttonSize={34}
+                    variant="outlined"
+                  />
+                </View>
+              );
+            })}
+          </View>
         </SectionCard>
       )}
 
@@ -213,7 +242,7 @@ export function EventsScreen() {
         </View>
       </Modal>
 
-      <SectionCard title="Calendar">
+      {!adminViewOnly && <SectionCard title="Calendar">
         <Text style={styles.bodyText} allowFontScaling>
           Tap a day to see events.
         </Text>
@@ -341,14 +370,14 @@ export function EventsScreen() {
             {statusText}
           </Text>
         )}
-      </SectionCard>
+      </SectionCard>}
 
-      <SectionCard title="Outreach">
+      {!adminViewOnly && <SectionCard title="Outreach">
         <Text style={styles.bodyText} allowFontScaling>
           Outreach opportunities will appear here.
         </Text>
         <PrimaryButton title="View Outreach (Coming Soon)" onPress={() => {}} disabled />
-      </SectionCard>
+      </SectionCard>}
     </ScreenContainer>
   );
 }
@@ -363,6 +392,35 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 16,
     fontWeight: '600',
+  },
+  adminEventList: {
+    marginTop: 10,
+    gap: 10,
+  },
+  adminEventRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    backgroundColor: colors.highlight,
+    borderColor: colors.primary,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 10,
+  },
+  adminEventInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  adminEventTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  adminEventMeta: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '700',
   },
   statusText: {
     color: colors.text,

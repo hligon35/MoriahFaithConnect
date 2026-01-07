@@ -70,7 +70,7 @@ async function openMaps(address: string) {
 }
 
 export function CommunityScreen() {
-  const { adminEnabled } = useAdmin();
+  const { adminEnabled, adminViewOnly } = useAdmin();
 
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<DirectoryMember | null>(null);
@@ -140,81 +140,54 @@ export function CommunityScreen() {
 
   return (
     <ScreenContainer>
-      <View style={styles.directoryCard}>
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.directoryTitle} allowFontScaling>
-            Church Directory
-          </Text>
-          {adminEnabled && (
-            <IconButton
-              icon="add"
-              accessibilityLabel="Add directory member"
-              onPress={() => {
-                setMemberDraft({ name: '', role: '', email: '', phone: '', address: '' });
-                setAddMemberOpen(true);
-              }}
-              iconColor={colors.primary}
-              variant="outlined"
-              iconSize={22}
-              buttonSize={34}
-            />
-          )}
-        </View>
-
-        <View style={styles.searchRow}>
-          <MaterialIcons name="search" size={22} color={colors.text} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search by name or role"
-            placeholderTextColor={colors.text}
-            style={styles.searchInput}
-            autoCorrect={false}
-            autoCapitalize="none"
-            accessibilityLabel="Search church directory"
-          />
-          {!!query && (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Clear search"
-              onPress={() => setQuery('')}
-              hitSlop={10}
-            >
-              <MaterialIcons name="close" size={22} color={colors.text} />
-            </Pressable>
-          )}
-        </View>
-
-        <FlatList
-          horizontal
-          data={filteredDirectory}
-          keyExtractor={(item) => item.id}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.directoryList}
-          renderItem={({ item }) => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Open directory profile for ${item.name}`}
-              onPress={() => setSelected(item)}
-              style={({ pressed }) => [styles.memberChip, pressed && styles.pressed]}
-            >
-              <AvatarCircle name={item.name} size={52} />
-              <Text style={styles.memberName} allowFontScaling numberOfLines={1}>
-                {item.name}
-              </Text>
-              <Text style={styles.memberRole} allowFontScaling numberOfLines={1}>
-                {item.role}
-              </Text>
-            </Pressable>
-          )}
-        />
-
-        <View style={styles.ministriesSection}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.directoryTitle} allowFontScaling>
-              Ministries
+      {adminEnabled && adminViewOnly ? (
+        <>
+          <SectionCard
+            title="Admin: Directory"
+            headerRight={
+              <IconButton
+                icon="add"
+                accessibilityLabel="Add directory member"
+                onPress={() => {
+                  setMemberDraft({ name: '', role: '', email: '', phone: '', address: '' });
+                  setAddMemberOpen(true);
+                }}
+                iconColor={colors.primary}
+                variant="outlined"
+                iconSize={22}
+                buttonSize={34}
+              />
+            }
+          >
+            <Text style={styles.bodyText} allowFontScaling>
+              Members: {directoryMembers.length}
             </Text>
-            {adminEnabled && (
+            <View style={styles.adminList}>
+              {directoryMembers.slice(0, 12).map((m) => (
+                <View key={m.id} style={styles.adminRow}>
+                  <Text style={styles.adminRowText} allowFontScaling numberOfLines={1}>
+                    {m.name} — {m.role}
+                  </Text>
+                  <IconButton
+                    icon="delete"
+                    accessibilityLabel={`Delete directory member ${m.name}`}
+                    onPress={async () => {
+                      const next = directoryMembers.filter((x) => x.id !== m.id);
+                      setDirectoryMembers(next);
+                      await saveDirectoryOverride(next);
+                    }}
+                    iconSize={22}
+                    buttonSize={34}
+                    variant="outlined"
+                  />
+                </View>
+              ))}
+            </View>
+          </SectionCard>
+
+          <SectionCard
+            title="Admin: Ministries"
+            headerRight={
               <IconButton
                 icon="add"
                 accessibilityLabel="Add ministry"
@@ -235,94 +208,65 @@ export function CommunityScreen() {
                 iconSize={22}
                 buttonSize={34}
               />
-            )}
-          </View>
-
-          <FlatList
-            horizontal
-            data={ministryItems}
-            keyExtractor={(item) => item.id}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.directoryList}
-            renderItem={({ item }) => (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Open ministry: ${item.name}`}
-                onPress={() => setSelectedMinistry(item)}
-                style={({ pressed }) => [styles.ministryChip, pressed && styles.pressed]}
-              >
-                <Text style={styles.ministryName} allowFontScaling numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <Text style={styles.ministrySummary} allowFontScaling numberOfLines={2}>
-                  {item.summary}
-                </Text>
-                {adminEnabled && (
-                  <View style={styles.adminInlineAction}>
-                    <IconButton
-                      icon="delete"
-                      accessibilityLabel={`Delete ministry ${item.name}`}
-                      onPress={async () => {
-                        const next = ministryItems.filter((m) => m.id !== item.id);
-                        setMinistryItems(next);
-                        await saveMinistriesOverride(next);
-                      }}
-                      iconSize={22}
-                      buttonSize={34}
-                      variant="outlined"
-                    />
-                  </View>
-                )}
-              </Pressable>
-            )}
-          />
-        </View>
-      </View>
-
-      <SectionCard
-        title="Prayer Wall"
-        headerRight={
-          <IconButton
-            icon="add"
-            accessibilityLabel="Add prayer name"
-            onPress={() => {
-              setPrayerNameDraft('');
-              setAddPrayerOpen(true);
-            }}
-            iconColor={colors.primary}
-            variant="outlined"
-            iconSize={22}
-            buttonSize={34}
-          />
-        }
-      >
-        <Text style={styles.bodyText} allowFontScaling>
-          Names in need of prayer...
-        </Text>
-
-        <View style={styles.prayerListWrap}>
-          {prayers.map((item, index) => (
-            <View
-              key={item.id}
-              style={[styles.prayerRow, index === 0 && styles.prayerRowFirst]}
-              accessibilityRole="text"
-              accessibilityLabel={`Prayer name: ${item.name}`}
-            >
-              <Text style={styles.prayerName} allowFontScaling numberOfLines={1}>
-                {item.name}
-              </Text>
-              <View style={styles.prayerRight}>
-                <View style={styles.prayerAgeBadge} accessibilityRole="text">
-                  <Text style={styles.prayerAgeText} allowFontScaling>
-                    {formatPrayerAge(item.createdAt, new Date())}
+            }
+          >
+            <Text style={styles.bodyText} allowFontScaling>
+              Ministries: {ministryItems.length}
+            </Text>
+            <View style={styles.adminList}>
+              {ministryItems.slice(0, 12).map((m) => (
+                <View key={m.id} style={styles.adminRow}>
+                  <Text style={styles.adminRowText} allowFontScaling numberOfLines={1}>
+                    {m.name}
                   </Text>
-                </View>
-                {adminEnabled && (
                   <IconButton
                     icon="delete"
-                    accessibilityLabel={`Remove prayer name ${item.name}`}
+                    accessibilityLabel={`Delete ministry ${m.name}`}
                     onPress={async () => {
-                      const next = prayers.filter((p) => p.id !== item.id);
+                      const next = ministryItems.filter((x) => x.id !== m.id);
+                      setMinistryItems(next);
+                      await saveMinistriesOverride(next);
+                    }}
+                    iconSize={22}
+                    buttonSize={34}
+                    variant="outlined"
+                  />
+                </View>
+              ))}
+            </View>
+          </SectionCard>
+
+          <SectionCard
+            title="Admin: Prayer Wall"
+            headerRight={
+              <IconButton
+                icon="add"
+                accessibilityLabel="Add prayer name"
+                onPress={() => {
+                  setPrayerNameDraft('');
+                  setAddPrayerOpen(true);
+                }}
+                iconColor={colors.primary}
+                variant="outlined"
+                iconSize={22}
+                buttonSize={34}
+              />
+            }
+          >
+            <Text style={styles.bodyText} allowFontScaling>
+              Names: {prayers.length}
+            </Text>
+            <View style={styles.adminList}>
+              {prayers.slice(0, 20).map((p) => (
+                <View key={p.id} style={styles.adminRow}>
+                  <Text style={styles.adminRowText} allowFontScaling numberOfLines={1}>
+                    {p.name}
+                  </Text>
+                  <IconButton
+                    icon="delete"
+                    accessibilityLabel={`Remove prayer name ${p.name}`}
+                    onPress={async () => {
+                      const next = prayers.filter((x) => x.id !== p.id);
                       setPrayers(next);
                       await savePrayersOverride(next);
                     }}
@@ -330,12 +274,211 @@ export function CommunityScreen() {
                     buttonSize={34}
                     variant="outlined"
                   />
+                </View>
+              ))}
+            </View>
+          </SectionCard>
+        </>
+      ) : (
+        <>
+          <View style={styles.directoryCard}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.directoryTitle} allowFontScaling>
+                Church Directory
+              </Text>
+              {adminEnabled && (
+                <IconButton
+                  icon="add"
+                  accessibilityLabel="Add directory member"
+                  onPress={() => {
+                    setMemberDraft({ name: '', role: '', email: '', phone: '', address: '' });
+                    setAddMemberOpen(true);
+                  }}
+                  iconColor={colors.primary}
+                  variant="outlined"
+                  iconSize={22}
+                  buttonSize={34}
+                />
+              )}
+            </View>
+
+            <View style={styles.searchRow}>
+              <MaterialIcons name="search" size={22} color={colors.text} />
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Search by name or role"
+                placeholderTextColor={colors.text}
+                style={styles.searchInput}
+                autoCorrect={false}
+                autoCapitalize="none"
+                accessibilityLabel="Search church directory"
+              />
+              {!!query && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear search"
+                  onPress={() => setQuery('')}
+                  hitSlop={10}
+                >
+                  <MaterialIcons name="close" size={22} color={colors.text} />
+                </Pressable>
+              )}
+            </View>
+
+            <FlatList
+              horizontal
+              data={filteredDirectory}
+              keyExtractor={(item) => item.id}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.directoryList}
+              renderItem={({ item }) => (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open directory profile for ${item.name}`}
+                  onPress={() => setSelected(item)}
+                  style={({ pressed }) => [styles.memberChip, pressed && styles.pressed]}
+                >
+                  <AvatarCircle name={item.name} size={52} />
+                  <Text style={styles.memberName} allowFontScaling numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text style={styles.memberRole} allowFontScaling numberOfLines={1}>
+                    {item.role}
+                  </Text>
+                </Pressable>
+              )}
+            />
+
+            <View style={styles.ministriesSection}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.directoryTitle} allowFontScaling>
+                  Ministries
+                </Text>
+                {adminEnabled && (
+                  <IconButton
+                    icon="add"
+                    accessibilityLabel="Add ministry"
+                    onPress={() => {
+                      setMinistryDraft({
+                        name: '',
+                        summary: '',
+                        contactName: '',
+                        contactRole: '',
+                        contactEmail: '',
+                        contactPhone: '',
+                        meetingSchedule: '',
+                      });
+                      setAddMinistryOpen(true);
+                    }}
+                    iconColor={colors.primary}
+                    variant="outlined"
+                    iconSize={22}
+                    buttonSize={34}
+                  />
                 )}
               </View>
+
+              <FlatList
+                horizontal
+                data={ministryItems}
+                keyExtractor={(item) => item.id}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.directoryList}
+                renderItem={({ item }) => (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open ministry: ${item.name}`}
+                    onPress={() => setSelectedMinistry(item)}
+                    style={({ pressed }) => [styles.ministryChip, pressed && styles.pressed]}
+                  >
+                    <Text style={styles.ministryName} allowFontScaling numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <Text style={styles.ministrySummary} allowFontScaling numberOfLines={2}>
+                      {item.summary}
+                    </Text>
+                    {adminEnabled && (
+                      <View style={styles.adminInlineAction}>
+                        <IconButton
+                          icon="delete"
+                          accessibilityLabel={`Delete ministry ${item.name}`}
+                          onPress={async () => {
+                            const next = ministryItems.filter((m) => m.id !== item.id);
+                            setMinistryItems(next);
+                            await saveMinistriesOverride(next);
+                          }}
+                          iconSize={22}
+                          buttonSize={34}
+                          variant="outlined"
+                        />
+                      </View>
+                    )}
+                  </Pressable>
+                )}
+              />
             </View>
-          ))}
-        </View>
-      </SectionCard>
+          </View>
+
+          <SectionCard
+            title="Prayer Wall"
+            headerRight={
+              <IconButton
+                icon="add"
+                accessibilityLabel="Add prayer name"
+                onPress={() => {
+                  setPrayerNameDraft('');
+                  setAddPrayerOpen(true);
+                }}
+                iconColor={colors.primary}
+                variant="outlined"
+                iconSize={22}
+                buttonSize={34}
+              />
+            }
+          >
+            <Text style={styles.bodyText} allowFontScaling>
+              Names in need of prayer...
+            </Text>
+
+            <View style={styles.prayerListWrap}>
+              {prayers.map((item, index) => (
+                <View
+                  key={item.id}
+                  style={[styles.prayerRow, index === 0 && styles.prayerRowFirst]}
+                  accessibilityRole="text"
+                  accessibilityLabel={`Prayer name: ${item.name}`}
+                >
+                  <Text style={styles.prayerName} allowFontScaling numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <View style={styles.prayerRight}>
+                    <View style={styles.prayerAgeBadge} accessibilityRole="text">
+                      <Text style={styles.prayerAgeText} allowFontScaling>
+                        {formatPrayerAge(item.createdAt, new Date())}
+                      </Text>
+                    </View>
+                    {adminEnabled && (
+                      <IconButton
+                        icon="delete"
+                        accessibilityLabel={`Remove prayer name ${item.name}`}
+                        onPress={async () => {
+                          const next = prayers.filter((p) => p.id !== item.id);
+                          setPrayers(next);
+                          await savePrayersOverride(next);
+                        }}
+                        iconSize={20}
+                        buttonSize={34}
+                        variant="outlined"
+                      />
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+          </SectionCard>
+        </>
+      )}
 
       <Modal
         visible={addPrayerOpen}
@@ -841,6 +984,29 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 16,
     fontWeight: '600',
+  },
+  adminList: {
+    borderColor: colors.primary,
+    borderWidth: 1,
+    borderRadius: 14,
+    backgroundColor: colors.background,
+    overflow: 'hidden',
+  },
+  adminRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderTopColor: colors.primary,
+    borderTopWidth: 1,
+  },
+  adminRowText: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '800',
   },
   prayerListWrap: {
     maxHeight: 220,

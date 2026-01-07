@@ -27,7 +27,7 @@ const defaultArchiveCategories: ArchiveCategory[] = [
 ];
 
 export function WatchScreen() {
-  const { adminEnabled } = useAdmin();
+  const { adminEnabled, adminViewOnly } = useAdmin();
   const [categories, setCategories] = useState<ArchiveCategory[]>(defaultArchiveCategories);
   const [adminAddOpen, setAdminAddOpen] = useState(false);
   const [adminDraft, setAdminDraft] = useState({ title: '', description: '' });
@@ -46,32 +46,34 @@ export function WatchScreen() {
 
   return (
     <ScreenContainer contentContainerStyle={styles.containerTight}>
-      <View style={styles.liveCardWrap} accessibilityRole="summary">
-        <View style={styles.liveRow}>
-          <View style={styles.liveTextCol}>
-            <Text style={styles.liveTitle} allowFontScaling>
-              Live Stream
-            </Text>
-            <Text style={styles.bodyText} allowFontScaling>
-              Live stream will appear here.
-            </Text>
-            <Text style={styles.liveMeta} allowFontScaling>
-              Coming soon
-            </Text>
-          </View>
+      {!adminViewOnly && (
+        <View style={styles.liveCardWrap} accessibilityRole="summary">
+          <View style={styles.liveRow}>
+            <View style={styles.liveTextCol}>
+              <Text style={styles.liveTitle} allowFontScaling>
+                Live Stream
+              </Text>
+              <Text style={styles.bodyText} allowFontScaling>
+                Live stream will appear here.
+              </Text>
+              <Text style={styles.liveMeta} allowFontScaling>
+                Coming soon
+              </Text>
+            </View>
 
-          <View style={styles.liveThumbFrame}>
-            <Image
-              source={require('../../assets/icon.png')}
-              style={styles.liveThumbImage}
-              accessibilityLabel="Live stream thumbnail"
-            />
+            <View style={styles.liveThumbFrame}>
+              <Image
+                source={require('../../assets/icon.png')}
+                style={styles.liveThumbImage}
+                accessibilityLabel="Live stream thumbnail"
+              />
+            </View>
           </View>
         </View>
-      </View>
+      )}
 
       <SectionCard
-        title="Sermon Archive"
+        title={adminViewOnly ? 'Admin: Sermon Archive' : 'Sermon Archive'}
         headerRight={
           adminEnabled ? (
             <IconButton
@@ -90,7 +92,7 @@ export function WatchScreen() {
         }
       >
         <Text style={styles.bodyText} allowFontScaling>
-          Browse by category.
+          {adminViewOnly ? 'Manage sermon archive categories.' : 'Browse by category.'}
         </Text>
 
         <View style={styles.archiveList}>
