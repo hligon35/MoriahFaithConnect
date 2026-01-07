@@ -11,6 +11,8 @@ import {
 } from '../storage/collectionStore';
 
 type AdminContextValue = {
+  hydrated: boolean;
+
   adminEnabled: boolean;
   setAdminEnabled: (enabled: boolean) => Promise<void>;
 
@@ -26,6 +28,7 @@ type AdminContextValue = {
 const AdminContext = createContext<AdminContextValue | null>(null);
 
 export function AdminProvider({ children }: { children: React.ReactNode }) {
+  const [hydrated, setHydrated] = useState(false);
   const [adminEnabled, setAdminEnabledState] = useState(false);
   const [adminViewOnly, setAdminViewOnlyState] = useState(false);
 
@@ -40,13 +43,17 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const enabled = await loadAdminEnabled();
-      setAdminEnabledState(enabled);
+      try {
+        const enabled = await loadAdminEnabled();
+        setAdminEnabledState(enabled);
 
-      const viewOnly = await loadAdminViewOnly();
-      setAdminViewOnlyState(viewOnly);
+        const viewOnly = await loadAdminViewOnly();
+        setAdminViewOnlyState(viewOnly);
 
-      await refreshCollections();
+        await refreshCollections();
+      } finally {
+        setHydrated(true);
+      }
     })();
   }, []);
 
@@ -72,6 +79,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   };
 
   const value: AdminContextValue = {
+    hydrated,
     adminEnabled,
     setAdminEnabled,
 

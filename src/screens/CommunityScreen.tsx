@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
   FlatList,
+  Alert,
 } from 'react-native';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { IconButton } from '../components/IconButton';
@@ -83,9 +84,13 @@ export function CommunityScreen() {
   const [prayers, setPrayers] = useState<PrayerWallEntry[]>(prayerWallEntries);
   const [addPrayerOpen, setAddPrayerOpen] = useState(false);
   const [prayerNameDraft, setPrayerNameDraft] = useState('');
+  const [editingPrayerId, setEditingPrayerId] = useState<string | null>(null);
+  const [selectedPrayerIds, setSelectedPrayerIds] = useState<Record<string, boolean>>({});
 
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [memberDraft, setMemberDraft] = useState({ name: '', role: '', email: '', phone: '', address: '' });
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [selectedMemberIds, setSelectedMemberIds] = useState<Record<string, boolean>>({});
 
   const [addMinistryOpen, setAddMinistryOpen] = useState(false);
   const [ministryDraft, setMinistryDraft] = useState({
@@ -97,6 +102,8 @@ export function CommunityScreen() {
     contactPhone: '',
     meetingSchedule: '',
   });
+  const [editingMinistryId, setEditingMinistryId] = useState<string | null>(null);
+  const [selectedMinistryIds, setSelectedMinistryIds] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     (async () => {
@@ -105,6 +112,7 @@ export function CommunityScreen() {
     })();
   }, []);
 
+                  setEditingMemberId(null);
   useEffect(() => {
     (async () => {
       const dir = await loadDirectoryOverride();
@@ -120,27 +128,104 @@ export function CommunityScreen() {
 
   const filteredDirectory = useMemo(() => {
     const q = query.trim().toLowerCase();
+                const checked = !!selectedMemberIds[m.id];
     if (!q) return directoryMembers;
+                  <View key={m.id} style={styles.adminRow}>
+                    <IconButton
+                      icon={checked ? 'check-box' : 'check-box-outline-blank'}
+                      accessibilityLabel={checked ? `Unselect ${m.name}` : `Select ${m.name}`}
+                      onPress={() => setSelectedMemberIds((cur) => ({ ...cur, [m.id]: !cur[m.id] }))}
+                      iconSize={22}
+                      buttonSize={34}
+                      variant="plain"
+                    />
 
-    return directoryMembers.filter((m) => {
-      return (
-        m.name.toLowerCase().includes(q) ||
-        m.role.toLowerCase().includes(q) ||
-        m.email.toLowerCase().includes(q)
-      );
-    });
-  }, [directoryMembers, query]);
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`View ${m.name}`}
+                      onPress={() => setSelected(m)}
+                      style={({ pressed }) => [styles.adminRowMain, pressed && styles.pressed]}
+                    >
+                      <Text style={styles.adminRowText} allowFontScaling numberOfLines={1}>
+                        {m.name} — {m.role}
+                      </Text>
+                    </Pressable>
 
-  const selectedVisibility = useMemo<PrivacySettings>(() => {
-    // Placeholder: treat member m-001 as the current user whose privacy is configurable in Settings.
-    if (!selected) return defaultPrivacySettings;
-    if (selected.id === 'm-001') return myPrivacy;
-    return defaultPrivacySettings;
-  }, [selected, myPrivacy]);
+                    <IconButton
+                      icon="edit"
+                      accessibilityLabel={`Edit directory member ${m.name}`}
+                      onPress={() => {
+                        setEditingMemberId(m.id);
+                        setMemberDraft({
+                          name: m.name,
+                          role: m.role,
+                          email: m.email ?? '',
+                          phone: m.phone ?? '',
+                          address: m.address ?? '',
+                        });
+                        setAddMemberOpen(true);
+                      }}
+                      iconSize={20}
+                      buttonSize={34}
+                      variant="outlined"
+                    />
 
+                    <IconButton
+                      icon="delete"
+                      accessibilityLabel={`Delete directory member ${m.name}`}
+                      onPress={() => {
+                        Alert.alert('Delete member?', m.name, [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Delete',
+                            style: 'destructive',
+                            onPress: async () => {
+                              const next = directoryMembers.filter((x) => x.id !== m.id);
+                              setDirectoryMembers(next);
+                              await saveDirectoryOverride(next);
+                              setSelectedMemberIds((cur) => {
+                                const copy = { ...cur };
+                                delete copy[m.id];
+                                return copy;
+                              });
+                            },
+                          },
+                        ]);
+                      }}
+                      iconSize={22}
+                      buttonSize={34}
+                      variant="outlined"
+                    />
+                  </View>
   return (
     <ScreenContainer>
       {adminEnabled && adminViewOnly ? (
+
+            {Object.values(selectedMemberIds).some(Boolean) && (
+              <PrimaryButton
+                title="Delete Selected"
+                onPress={() => {
+                  const ids = Object.entries(selectedMemberIds)
+                    .filter(([, v]) => !!v)
+                    .map(([k]) => k);
+                  if (!ids.length) return;
+
+                  Alert.alert('Delete selected members?', `Count: ${ids.length}`, [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: async () => {
+                        const next = directoryMembers.filter((x) => !ids.includes(x.id));
+                        setDirectoryMembers(next);
+                        await saveDirectoryOverride(next);
+                        setSelectedMemberIds({});
+                      },
+                    },
+                  ]);
+                }}
+              />
+            )}
         <>
           <SectionCard
             title="Admin: Directory"
@@ -192,6 +277,7 @@ export function CommunityScreen() {
                 icon="add"
                 accessibilityLabel="Add ministry"
                 onPress={() => {
+                  setEditingMinistryId(null);
                   setMinistryDraft({
                     name: '',
                     summary: '',
@@ -214,26 +300,107 @@ export function CommunityScreen() {
               Ministries: {ministryItems.length}
             </Text>
             <View style={styles.adminList}>
-              {ministryItems.slice(0, 12).map((m) => (
-                <View key={m.id} style={styles.adminRow}>
-                  <Text style={styles.adminRowText} allowFontScaling numberOfLines={1}>
-                    {m.name}
-                  </Text>
-                  <IconButton
-                    icon="delete"
-                    accessibilityLabel={`Delete ministry ${m.name}`}
-                    onPress={async () => {
-                      const next = ministryItems.filter((x) => x.id !== m.id);
-                      setMinistryItems(next);
-                      await saveMinistriesOverride(next);
-                    }}
-                    iconSize={22}
-                    buttonSize={34}
-                    variant="outlined"
-                  />
-                </View>
-              ))}
+              {ministryItems.slice(0, 12).map((m) => {
+                const checked = !!selectedMinistryIds[m.id];
+                return (
+                  <View key={m.id} style={styles.adminRow}>
+                    <IconButton
+                      icon={checked ? 'check-box' : 'check-box-outline-blank'}
+                      accessibilityLabel={checked ? `Unselect ${m.name}` : `Select ${m.name}`}
+                      onPress={() => setSelectedMinistryIds((cur) => ({ ...cur, [m.id]: !cur[m.id] }))}
+                      iconSize={22}
+                      buttonSize={34}
+                      variant="plain"
+                    />
+
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`View ${m.name}`}
+                      onPress={() => setSelectedMinistry(m)}
+                      style={({ pressed }) => [styles.adminRowMain, pressed && styles.pressed]}
+                    >
+                      <Text style={styles.adminRowText} allowFontScaling numberOfLines={1}>
+                        {m.name}
+                      </Text>
+                    </Pressable>
+
+                    <IconButton
+                      icon="edit"
+                      accessibilityLabel={`Edit ministry ${m.name}`}
+                      onPress={() => {
+                        setEditingMinistryId(m.id);
+                        setMinistryDraft({
+                          name: m.name,
+                          summary: m.summary ?? '',
+                          contactName: m.contactName ?? '',
+                          contactRole: m.contactRole ?? '',
+                          contactEmail: m.contactEmail ?? '',
+                          contactPhone: m.contactPhone ?? '',
+                          meetingSchedule: m.meetingSchedule ?? '',
+                        });
+                        setAddMinistryOpen(true);
+                      }}
+                      iconSize={20}
+                      buttonSize={34}
+                      variant="outlined"
+                    />
+
+                    <IconButton
+                      icon="delete"
+                      accessibilityLabel={`Delete ministry ${m.name}`}
+                      onPress={() => {
+                        Alert.alert('Delete ministry?', m.name, [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Delete',
+                            style: 'destructive',
+                            onPress: async () => {
+                              const next = ministryItems.filter((x) => x.id !== m.id);
+                              setMinistryItems(next);
+                              await saveMinistriesOverride(next);
+                              setSelectedMinistryIds((cur) => {
+                                const copy = { ...cur };
+                                delete copy[m.id];
+                                return copy;
+                              });
+                            },
+                          },
+                        ]);
+                      }}
+                      iconSize={22}
+                      buttonSize={34}
+                      variant="outlined"
+                    />
+                  </View>
+                );
+              })}
             </View>
+
+            {Object.values(selectedMinistryIds).some(Boolean) && (
+              <PrimaryButton
+                title="Delete Selected"
+                onPress={() => {
+                  const ids = Object.entries(selectedMinistryIds)
+                    .filter(([, v]) => !!v)
+                    .map(([k]) => k);
+                  if (!ids.length) return;
+
+                  Alert.alert('Delete selected ministries?', `Count: ${ids.length}`, [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: async () => {
+                        const next = ministryItems.filter((x) => !ids.includes(x.id));
+                        setMinistryItems(next);
+                        await saveMinistriesOverride(next);
+                        setSelectedMinistryIds({});
+                      },
+                    },
+                  ]);
+                }}
+              />
+            )}
           </SectionCard>
 
           <SectionCard
@@ -257,26 +424,103 @@ export function CommunityScreen() {
               Names: {prayers.length}
             </Text>
             <View style={styles.adminList}>
-              {prayers.slice(0, 20).map((p) => (
-                <View key={p.id} style={styles.adminRow}>
-                  <Text style={styles.adminRowText} allowFontScaling numberOfLines={1}>
-                    {p.name}
-                  </Text>
-                  <IconButton
-                    icon="delete"
-                    accessibilityLabel={`Remove prayer name ${p.name}`}
-                    onPress={async () => {
-                      const next = prayers.filter((x) => x.id !== p.id);
-                      setPrayers(next);
-                      await savePrayersOverride(next);
-                    }}
-                    iconSize={20}
-                    buttonSize={34}
-                    variant="outlined"
-                  />
-                </View>
-              ))}
+              {prayers.slice(0, 20).map((p) => {
+                const checked = !!selectedPrayerIds[p.id];
+                return (
+                  <View key={p.id} style={styles.adminRow}>
+                    <IconButton
+                      icon={checked ? 'check-box' : 'check-box-outline-blank'}
+                      accessibilityLabel={checked ? `Unselect ${p.name}` : `Select ${p.name}`}
+                      onPress={() => setSelectedPrayerIds((cur) => ({ ...cur, [p.id]: !cur[p.id] }))}
+                      iconSize={22}
+                      buttonSize={34}
+                      variant="plain"
+                    />
+
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit prayer name ${p.name}`}
+                      onPress={() => {
+                        setEditingPrayerId(p.id);
+                        setPrayerNameDraft(p.name);
+                        setAddPrayerOpen(true);
+                      }}
+                      style={({ pressed }) => [styles.adminRowMain, pressed && styles.pressed]}
+                    >
+                      <Text style={styles.adminRowText} allowFontScaling numberOfLines={1}>
+                        {p.name}
+                      </Text>
+                    </Pressable>
+
+                    <IconButton
+                      icon="edit"
+                      accessibilityLabel={`Edit prayer name ${p.name}`}
+                      onPress={() => {
+                        setEditingPrayerId(p.id);
+                        setPrayerNameDraft(p.name);
+                        setAddPrayerOpen(true);
+                      }}
+                      iconSize={20}
+                      buttonSize={34}
+                      variant="outlined"
+                    />
+
+                    <IconButton
+                      icon="delete"
+                      accessibilityLabel={`Remove prayer name ${p.name}`}
+                      onPress={() => {
+                        Alert.alert('Delete name?', p.name, [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Delete',
+                            style: 'destructive',
+                            onPress: async () => {
+                              const next = prayers.filter((x) => x.id !== p.id);
+                              setPrayers(next);
+                              await savePrayersOverride(next);
+                              setSelectedPrayerIds((cur) => {
+                                const copy = { ...cur };
+                                delete copy[p.id];
+                                return copy;
+                              });
+                            },
+                          },
+                        ]);
+                      }}
+                      iconSize={20}
+                      buttonSize={34}
+                      variant="outlined"
+                    />
+                  </View>
+                );
+              })}
             </View>
+
+            {Object.values(selectedPrayerIds).some(Boolean) && (
+              <PrimaryButton
+                title="Delete Selected"
+                onPress={() => {
+                  const ids = Object.entries(selectedPrayerIds)
+                    .filter(([, v]) => !!v)
+                    .map(([k]) => k);
+                  if (!ids.length) return;
+
+                  Alert.alert('Delete selected names?', `Count: ${ids.length}`, [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: async () => {
+                        const next = prayers.filter((x) => !ids.includes(x.id));
+                        setPrayers(next);
+                        await savePrayersOverride(next);
+                        setSelectedPrayerIds({});
+                      },
+                    },
+                  ]);
+                }}
+              />
+            )}
           </SectionCard>
         </>
       ) : (
@@ -428,6 +672,7 @@ export function CommunityScreen() {
                 accessibilityLabel="Add prayer name"
                 onPress={() => {
                   setPrayerNameDraft('');
+                  setEditingPrayerId(null);
                   setAddPrayerOpen(true);
                 }}
                 iconColor={colors.primary}
@@ -529,12 +774,22 @@ export function CommunityScreen() {
                   const name = prayerNameDraft.trim();
                   if (!name) return;
 
-                  const createdAt = new Date().toISOString();
-                  setPrayers((current) => {
-                    const next = [{ id: `pw-${Date.now()}`, name, createdAt }, ...current];
-                    savePrayersOverride(next).catch(() => {});
-                    return next;
-                  });
+                  if (editingPrayerId) {
+                    setPrayers((current) => {
+                      const next = current.map((p) => (p.id === editingPrayerId ? { ...p, name } : p));
+                      savePrayersOverride(next).catch(() => {});
+                      return next;
+                    });
+                  } else {
+                    const createdAt = new Date().toISOString();
+                    setPrayers((current) => {
+                      const next = [{ id: `pw-${Date.now()}`, name, createdAt }, ...current];
+                      savePrayersOverride(next).catch(() => {});
+                      return next;
+                    });
+                  }
+
+                  setEditingPrayerId(null);
                   setAddPrayerOpen(false);
                 }}
                 disabled={!prayerNameDraft.trim()}
@@ -555,7 +810,7 @@ export function CommunityScreen() {
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleWrap}>
                 <Text style={styles.modalName} allowFontScaling>
-                  Add Directory Member
+                  {editingMemberId ? 'Edit Directory Member' : 'Add Directory Member'}
                 </Text>
                 <Text style={styles.modalRole} allowFontScaling>
                   Add/edit/remove directory members.
@@ -601,19 +856,38 @@ export function CommunityScreen() {
                   const role = memberDraft.role.trim();
                   if (!name || !role) return;
 
-                  const next = [
-                    {
-                      id: `m-admin-${Date.now()}`,
-                      name,
-                      role,
-                      email: memberDraft.email ?? '',
-                      phone: memberDraft.phone ?? '',
-                      address: memberDraft.address ?? '',
-                    } as DirectoryMember,
-                    ...directoryMembers,
-                  ];
-                  setDirectoryMembers(next);
-                  await saveDirectoryOverride(next);
+                  if (editingMemberId) {
+                    const next = directoryMembers.map((m) =>
+                      m.id === editingMemberId
+                        ? ({
+                            ...m,
+                            name,
+                            role,
+                            email: memberDraft.email ?? '',
+                            phone: memberDraft.phone ?? '',
+                            address: memberDraft.address ?? '',
+                          } as DirectoryMember)
+                        : m
+                    );
+                    setDirectoryMembers(next);
+                    await saveDirectoryOverride(next);
+                  } else {
+                    const next = [
+                      {
+                        id: `m-admin-${Date.now()}`,
+                        name,
+                        role,
+                        email: memberDraft.email ?? '',
+                        phone: memberDraft.phone ?? '',
+                        address: memberDraft.address ?? '',
+                      } as DirectoryMember,
+                      ...directoryMembers,
+                    ];
+                    setDirectoryMembers(next);
+                    await saveDirectoryOverride(next);
+                  }
+
+                  setEditingMemberId(null);
                   setAddMemberOpen(false);
                 }}
                 disabled={!memberDraft.name.trim() || !memberDraft.role.trim()}
@@ -634,7 +908,7 @@ export function CommunityScreen() {
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleWrap}>
                 <Text style={styles.modalName} allowFontScaling>
-                  Add Ministry
+                  {editingMinistryId ? 'Edit Ministry' : 'Add Ministry'}
                 </Text>
                 <Text style={styles.modalRole} allowFontScaling>
                   Add/edit/remove ministries.
@@ -677,21 +951,42 @@ export function CommunityScreen() {
                   const name = ministryDraft.name.trim();
                   if (!name) return;
 
-                  const next: Ministry = {
-                    id: `min-admin-${Date.now()}`,
-                    name,
-                    summary: ministryDraft.summary.trim(),
-                    contactName: ministryDraft.contactName.trim(),
-                    contactRole: ministryDraft.contactRole.trim(),
-                    contactEmail: ministryDraft.contactEmail.trim(),
-                    contactPhone: ministryDraft.contactPhone.trim(),
-                    meetingSchedule: ministryDraft.meetingSchedule.trim(),
-                    members: [],
-                  };
+                  if (editingMinistryId) {
+                    const updated = ministryItems.map((m) =>
+                      m.id === editingMinistryId
+                        ? ({
+                            ...m,
+                            name,
+                            summary: ministryDraft.summary.trim(),
+                            contactName: ministryDraft.contactName.trim(),
+                            contactRole: ministryDraft.contactRole.trim(),
+                            contactEmail: ministryDraft.contactEmail.trim(),
+                            contactPhone: ministryDraft.contactPhone.trim(),
+                            meetingSchedule: ministryDraft.meetingSchedule.trim(),
+                          } as Ministry)
+                        : m
+                    );
+                    setMinistryItems(updated);
+                    await saveMinistriesOverride(updated);
+                  } else {
+                    const next: Ministry = {
+                      id: `min-admin-${Date.now()}`,
+                      name,
+                      summary: ministryDraft.summary.trim(),
+                      contactName: ministryDraft.contactName.trim(),
+                      contactRole: ministryDraft.contactRole.trim(),
+                      contactEmail: ministryDraft.contactEmail.trim(),
+                      contactPhone: ministryDraft.contactPhone.trim(),
+                      meetingSchedule: ministryDraft.meetingSchedule.trim(),
+                      members: [],
+                    };
 
-                  const updated = [next, ...ministryItems];
-                  setMinistryItems(updated);
-                  await saveMinistriesOverride(updated);
+                    const updated = [next, ...ministryItems];
+                    setMinistryItems(updated);
+                    await saveMinistriesOverride(updated);
+                  }
+
+                  setEditingMinistryId(null);
                   setAddMinistryOpen(false);
                 }}
                 disabled={!ministryDraft.name.trim()}
@@ -991,6 +1286,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: colors.background,
     overflow: 'hidden',
+  },
+  adminRowMain: {
+    flex: 1,
+    paddingVertical: 6,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   adminRow: {
     flexDirection: 'row',

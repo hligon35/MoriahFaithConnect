@@ -27,6 +27,8 @@ const WORD_KEY = 'mfc.admin.wordSchedule.v1';
 const ANNOUNCEMENTS_KEY = 'mfc.admin.announcements.v1';
 const SERVICE_EXTRAS_KEY = 'mfc.admin.serviceExtrasByDate.v1';
 const SERVICE_ITINERARY_KEY = 'mfc.admin.serviceItineraryById.v1';
+const SERVICE_TITLES_KEY = 'mfc.admin.serviceTitleOptions.v1';
+const SERVICE_WEEKLY_EXTRAS_KEY = 'mfc.admin.serviceExtrasByWeekday.v1';
 
 export function toDateKey(date: Date) {
   const y = date.getFullYear();
@@ -116,4 +118,39 @@ export async function loadServiceItineraryById(): Promise<Record<string, string[
 
 export async function saveServiceItineraryById(map: Record<string, string[]>): Promise<void> {
   await AsyncStorage.setItem(SERVICE_ITINERARY_KEY, JSON.stringify(map));
+}
+
+export async function loadServiceTitleOptions(): Promise<string[]> {
+  try {
+    const raw = await AsyncStorage.getItem(SERVICE_TITLES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((x) => (typeof x === 'string' ? x.trim() : ''))
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+export async function saveServiceTitleOptions(titles: string[]): Promise<void> {
+  const clean = titles.map((t) => t.trim()).filter(Boolean);
+  await AsyncStorage.setItem(SERVICE_TITLES_KEY, JSON.stringify(clean));
+}
+
+export async function loadServiceExtrasByWeekday(): Promise<Record<string, ServiceExtra[]>> {
+  try {
+    const raw = await AsyncStorage.getItem(SERVICE_WEEKLY_EXTRAS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object') return {};
+    return parsed as Record<string, ServiceExtra[]>;
+  } catch {
+    return {};
+  }
+}
+
+export async function saveServiceExtrasByWeekday(map: Record<string, ServiceExtra[]>): Promise<void> {
+  await AsyncStorage.setItem(SERVICE_WEEKLY_EXTRAS_KEY, JSON.stringify(map));
 }

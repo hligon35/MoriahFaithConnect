@@ -15,20 +15,30 @@ import { PrimaryButton } from '../components/PrimaryButton';
 import { SectionCard } from '../components/SectionCard';
 import type { RootStackParamList, RootTabParamList } from '../navigation/types';
 import { useAdmin } from '../state/AdminContext';
+import { MaterialIcons } from '@expo/vector-icons';
 import {
   loadAnnouncements,
   loadServiceExtrasByDate,
+  loadServiceExtrasByWeekday,
   loadServiceItineraryById,
+  loadServiceTitleOptions,
   loadWordSchedule,
   saveAnnouncements,
   saveServiceExtrasByDate,
+  saveServiceExtrasByWeekday,
   saveServiceItineraryById,
+  saveServiceTitleOptions,
   saveWordSchedule,
   toDateKey,
   type AnnouncementDraft,
   type ServiceExtra,
   type WordScheduleEntry,
 } from '../storage/homeAdminStore';
+
+function weekdayLabel(day: number) {
+  const labels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return labels[day] ?? 'Sunday';
+}
 
 function parseClockTimeLabel(baseDate: Date, timeLabel: string) {
   const match = timeLabel.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
@@ -88,7 +98,18 @@ export function HomeScreen() {
   const [adminServiceOpen, setAdminServiceOpen] = useState(false);
   const [adminServiceDraft, setAdminServiceDraft] = useState({ title: '', timeLabel: '', locationLabel: '', itineraryText: '' });
   const [serviceExtrasByDate, setServiceExtrasByDate] = useState<Record<string, ServiceExtra[]>>({});
+  const [serviceExtrasByWeekday, setServiceExtrasByWeekday] = useState<Record<string, ServiceExtra[]>>({});
   const [serviceItineraryById, setServiceItineraryById] = useState<Record<string, string[]>>({});
+  const [serviceTitleOptions, setServiceTitleOptions] = useState<string[]>([]);
+
+  const [adminServiceDay, setAdminServiceDay] = useState<number>(new Date().getDay());
+  const [serviceTitlePickerOpen, setServiceTitlePickerOpen] = useState(false);
+  const [serviceDayPickerOpen, setServiceDayPickerOpen] = useState(false);
+  const [serviceLocationPickerOpen, setServiceLocationPickerOpen] = useState(false);
+  const [newServiceOpen, setNewServiceOpen] = useState(false);
+  const [newServiceTitleDraft, setNewServiceTitleDraft] = useState('');
+  const [offsiteOpen, setOffsiteOpen] = useState(false);
+  const [offsiteLocationDraft, setOffsiteLocationDraft] = useState('');
 
   const today = useMemo(() => new Date(), []);
   const dateKey = useMemo(() => toDateKey(today), [today]);
@@ -104,8 +125,24 @@ export function HomeScreen() {
       const extras = await loadServiceExtrasByDate();
       setServiceExtrasByDate(extras);
 
+      const weekly = await loadServiceExtrasByWeekday();
+      setServiceExtrasByWeekday(weekly);
+
       const itineraries = await loadServiceItineraryById();
       setServiceItineraryById(itineraries);
+
+      const storedTitles = await loadServiceTitleOptions();
+      if (storedTitles.length) {
+        setServiceTitleOptions(storedTitles);
+      } else {
+        // Seed from built-in schedule across weekdays.
+        const seedDates = [0, 1, 2, 3, 4, 5, 6].map((dow) => new Date(2020, 0, 5 + dow));
+        const seed = Array.from(
+          new Set(seedDates.flatMap((d) => getTodaysServices(d).map((s) => s.title.trim()).filter(Boolean)))
+        );
+        setServiceTitleOptions(seed);
+        await saveServiceTitleOptions(seed);
+      }
     })();
   }, []);
 
@@ -126,13 +163,15 @@ export function HomeScreen() {
 
   const todaysServices = useMemo(() => {
     const base = getTodaysServices(today);
-    const extras = serviceExtrasByDate[dateKey] ?? [];
-    const merged = [...extras, ...base];
+    const extrasByDate = serviceExtrasByDate[dateKey] ?? [];
+    const dowKey = String(today.getDay());
+    const extrasByDow = serviceExtrasByWeekday[dowKey] ?? [];
+    const merged = [...extrasByDate, ...extrasByDow, ...base];
     return merged.map((svc) => {
       const itinerary = serviceItineraryById[svc.id];
       return itinerary ? { ...svc, itinerary } : svc;
     });
-  }, [dateKey, serviceExtrasByDate, serviceItineraryById, today]);
+  }, [dateKey, serviceExtrasByDate, serviceExtrasByWeekday, serviceItineraryById, today]);
 
   const itineraryService = useMemo(() => {
     return todaysServices.find((service) => (service.itinerary?.length ?? 0) > 0) ?? todaysServices[0];
@@ -522,6 +561,7 @@ export function HomeScreen() {
                   icon="add"
                   accessibilityLabel="Add service for today"
                   onPress={() => {
+                    setAdminServiceDay(today.getDay());
                     setAdminServiceDraft({ title: '', timeLabel: '', locationLabel: '', itineraryText: '' });
                     setAdminServiceOpen(true);
                   }}
@@ -737,7 +777,7 @@ export function HomeScreen() {
               <View style={styles.modalHeader}>
                 <View style={styles.modalTitleWrap}>
                   <Text style={styles.modalTitle} allowFontScaling>
-                    Add Service (Today)
+                    Add Service
                   </Text>
                   <Text style={styles.modalSubtitle} allowFontScaling>
                     Create a service and its program.
@@ -757,14 +797,32 @@ export function HomeScreen() {
               <Text style={styles.modalFieldLabel} allowFontScaling>
                 Title
               </Text>
-              <TextInput
-                value={adminServiceDraft.title}
-                onChangeText={(t) => setAdminServiceDraft((d) => ({ ...d, title: t }))}
-                placeholder="Morning Worship"
-                placeholderTextColor={colors.text}
-                style={styles.modalInput}
-                accessibilityLabel="Service title"
-              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Select service title"
+                onPress={() => setServiceTitlePickerOpen(true)}
+                style={({ pressed }) => [styles.modalSelect, pressed && styles.modalSelectPressed]}
+              >
+                <Text style={styles.modalSelectText} allowFontScaling numberOfLines={1}>
+                  {adminServiceDraft.title || 'Select a service title'}
+                </Text>
+                <MaterialIcons name="arrow-drop-down" size={24} color={colors.text} />
+              </Pressable>
+
+              <Text style={styles.modalFieldLabel} allowFontScaling>
+                Day
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Select service day"
+                onPress={() => setServiceDayPickerOpen(true)}
+                style={({ pressed }) => [styles.modalSelect, pressed && styles.modalSelectPressed]}
+              >
+                <Text style={styles.modalSelectText} allowFontScaling numberOfLines={1}>
+                  {weekdayLabel(adminServiceDay)}
+                </Text>
+                <MaterialIcons name="arrow-drop-down" size={24} color={colors.text} />
+              </Pressable>
 
               <Text style={styles.modalFieldLabel} allowFontScaling>
                 Time
@@ -781,14 +839,17 @@ export function HomeScreen() {
               <Text style={styles.modalFieldLabel} allowFontScaling>
                 Location
               </Text>
-              <TextInput
-                value={adminServiceDraft.locationLabel}
-                onChangeText={(t) => setAdminServiceDraft((d) => ({ ...d, locationLabel: t }))}
-                placeholder="Sanctuary / Live Stream"
-                placeholderTextColor={colors.text}
-                style={styles.modalInput}
-                accessibilityLabel="Service location"
-              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Select service location"
+                onPress={() => setServiceLocationPickerOpen(true)}
+                style={({ pressed }) => [styles.modalSelect, pressed && styles.modalSelectPressed]}
+              >
+                <Text style={styles.modalSelectText} allowFontScaling numberOfLines={1}>
+                  {adminServiceDraft.locationLabel || 'Select location'}
+                </Text>
+                <MaterialIcons name="arrow-drop-down" size={24} color={colors.text} />
+              </Pressable>
 
               <Text style={styles.modalFieldLabel} allowFontScaling>
                 Program (one line per item)
@@ -822,12 +883,13 @@ export function HomeScreen() {
 
                     if (!service.title || !service.timeLabel || !service.locationLabel) return;
 
-                    const nextExtras = {
-                      ...serviceExtrasByDate,
-                      [dateKey]: [service, ...(serviceExtrasByDate[dateKey] ?? [])],
+                    const dowKey = String(adminServiceDay);
+                    const nextWeekly = {
+                      ...serviceExtrasByWeekday,
+                      [dowKey]: [...(serviceExtrasByWeekday[dowKey] ?? []), service],
                     };
-                    setServiceExtrasByDate(nextExtras);
-                    await saveServiceExtrasByDate(nextExtras);
+                    setServiceExtrasByWeekday(nextWeekly);
+                    await saveServiceExtrasByWeekday(nextWeekly);
 
                     if (lines.length) {
                       const nextIt = { ...serviceItineraryById, [service.id]: lines };
@@ -838,6 +900,246 @@ export function HomeScreen() {
                     setAdminServiceOpen(false);
                   }}
                   disabled={!adminServiceDraft.title.trim() || !adminServiceDraft.timeLabel.trim() || !adminServiceDraft.locationLabel.trim()}
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal
+          visible={serviceTitlePickerOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setServiceTitlePickerOpen(false)}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={() => setServiceTitlePickerOpen(false)} />
+          <View style={styles.pickerCard} accessibilityViewIsModal>
+            <Text style={styles.pickerTitle} allowFontScaling>
+              Service Title
+            </Text>
+            <View style={styles.pickerDivider} />
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="New service"
+              onPress={() => {
+                setServiceTitlePickerOpen(false);
+                setNewServiceTitleDraft('');
+                setNewServiceOpen(true);
+              }}
+              style={({ pressed }) => [styles.pickerRow, pressed && styles.pickerRowPressed]}
+            >
+              <Text style={styles.pickerRowText} allowFontScaling>
+                New service
+              </Text>
+            </Pressable>
+
+            {serviceTitleOptions.map((t) => (
+              <Pressable
+                key={t}
+                accessibilityRole="button"
+                accessibilityLabel={`Select ${t}`}
+                onPress={() => {
+                  setAdminServiceDraft((d) => ({ ...d, title: t }));
+                  setServiceTitlePickerOpen(false);
+                }}
+                style={({ pressed }) => [styles.pickerRow, pressed && styles.pickerRowPressed]}
+              >
+                <Text style={styles.pickerRowText} allowFontScaling numberOfLines={1}>
+                  {t}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </Modal>
+
+        <Modal
+          visible={serviceDayPickerOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setServiceDayPickerOpen(false)}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={() => setServiceDayPickerOpen(false)} />
+          <View style={styles.pickerCard} accessibilityViewIsModal>
+            <Text style={styles.pickerTitle} allowFontScaling>
+              Day of Week
+            </Text>
+            <View style={styles.pickerDivider} />
+            {[0, 1, 2, 3, 4, 5, 6].map((d) => (
+              <Pressable
+                key={d}
+                accessibilityRole="button"
+                accessibilityLabel={`Select ${weekdayLabel(d)}`}
+                onPress={() => {
+                  setAdminServiceDay(d);
+                  setServiceDayPickerOpen(false);
+                }}
+                style={({ pressed }) => [styles.pickerRow, pressed && styles.pickerRowPressed]}
+              >
+                <Text style={styles.pickerRowText} allowFontScaling>
+                  {weekdayLabel(d)}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </Modal>
+
+        <Modal
+          visible={serviceLocationPickerOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setServiceLocationPickerOpen(false)}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={() => setServiceLocationPickerOpen(false)} />
+          <View style={styles.pickerCard} accessibilityViewIsModal>
+            <Text style={styles.pickerTitle} allowFontScaling>
+              Location
+            </Text>
+            <View style={styles.pickerDivider} />
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="On-site"
+              onPress={() => {
+                setAdminServiceDraft((d) => ({ ...d, locationLabel: 'On-site' }));
+                setServiceLocationPickerOpen(false);
+              }}
+              style={({ pressed }) => [styles.pickerRow, pressed && styles.pickerRowPressed]}
+            >
+              <Text style={styles.pickerRowText} allowFontScaling>
+                On-site
+              </Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Off-site"
+              onPress={() => {
+                setServiceLocationPickerOpen(false);
+                setOffsiteLocationDraft('');
+                setOffsiteOpen(true);
+              }}
+              style={({ pressed }) => [styles.pickerRow, pressed && styles.pickerRowPressed]}
+            >
+              <Text style={styles.pickerRowText} allowFontScaling>
+                Off-site
+              </Text>
+            </Pressable>
+          </View>
+        </Modal>
+
+        <Modal
+          visible={newServiceOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setNewServiceOpen(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard} accessibilityViewIsModal>
+              <View style={styles.modalHeader}>
+                <View style={styles.modalTitleWrap}>
+                  <Text style={styles.modalTitle} allowFontScaling>
+                    New Service
+                  </Text>
+                  <Text style={styles.modalSubtitle} allowFontScaling>
+                    Add a new service title.
+                  </Text>
+                </View>
+                <IconButton
+                  icon="close"
+                  accessibilityLabel="Close"
+                  onPress={() => setNewServiceOpen(false)}
+                  iconSize={22}
+                  buttonSize={36}
+                />
+              </View>
+
+              <View style={styles.modalDivider} />
+
+              <Text style={styles.modalFieldLabel} allowFontScaling>
+                Title
+              </Text>
+              <TextInput
+                value={newServiceTitleDraft}
+                onChangeText={setNewServiceTitleDraft}
+                placeholder="New Service Name"
+                placeholderTextColor={colors.text}
+                style={styles.modalInput}
+                accessibilityLabel="New service title"
+              />
+
+              <View style={styles.modalActionRow}>
+                <PrimaryButton title="Cancel" onPress={() => setNewServiceOpen(false)} />
+                <PrimaryButton
+                  title="Save"
+                  onPress={async () => {
+                    const title = newServiceTitleDraft.trim();
+                    if (!title) return;
+
+                    const next = [...serviceTitleOptions.filter((t) => t.toLowerCase() !== title.toLowerCase()), title];
+                    setServiceTitleOptions(next);
+                    await saveServiceTitleOptions(next);
+                    setAdminServiceDraft((d) => ({ ...d, title }));
+                    setNewServiceOpen(false);
+                  }}
+                  disabled={!newServiceTitleDraft.trim()}
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal
+          visible={offsiteOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setOffsiteOpen(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard} accessibilityViewIsModal>
+              <View style={styles.modalHeader}>
+                <View style={styles.modalTitleWrap}>
+                  <Text style={styles.modalTitle} allowFontScaling>
+                    Off-site Location
+                  </Text>
+                  <Text style={styles.modalSubtitle} allowFontScaling>
+                    Enter the location.
+                  </Text>
+                </View>
+                <IconButton
+                  icon="close"
+                  accessibilityLabel="Close"
+                  onPress={() => setOffsiteOpen(false)}
+                  iconSize={22}
+                  buttonSize={36}
+                />
+              </View>
+
+              <View style={styles.modalDivider} />
+
+              <Text style={styles.modalFieldLabel} allowFontScaling>
+                Location
+              </Text>
+              <TextInput
+                value={offsiteLocationDraft}
+                onChangeText={setOffsiteLocationDraft}
+                placeholder="Community Center"
+                placeholderTextColor={colors.text}
+                style={styles.modalInput}
+                accessibilityLabel="Off-site location"
+              />
+
+              <View style={styles.modalActionRow}>
+                <PrimaryButton title="Cancel" onPress={() => setOffsiteOpen(false)} />
+                <PrimaryButton
+                  title="Save"
+                  onPress={() => {
+                    const loc = offsiteLocationDraft.trim();
+                    if (!loc) return;
+                    setAdminServiceDraft((d) => ({ ...d, locationLabel: loc }));
+                    setOffsiteOpen(false);
+                  }}
+                  disabled={!offsiteLocationDraft.trim()}
                 />
               </View>
             </View>
@@ -854,6 +1156,63 @@ const styles = StyleSheet.create({
     paddingTop: 25,
     paddingBottom: 25,
     gap: 10,
+  },
+  modalSelect: {
+    backgroundColor: colors.highlight,
+    borderColor: colors.primary,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalSelectPressed: {
+    opacity: 0.9,
+  },
+  modalSelectText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '800',
+    flex: 1,
+    marginRight: 10,
+  },
+  pickerCard: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    top: 120,
+    backgroundColor: colors.background,
+    borderColor: colors.primary,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 12,
+    gap: 8,
+  },
+  pickerTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  pickerDivider: {
+    height: 1,
+    backgroundColor: colors.primary,
+    opacity: 0.8,
+  },
+  pickerRow: {
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+  pickerRowPressed: {
+    backgroundColor: colors.highlight,
+  },
+  pickerRowText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '800',
   },
   header: {
     gap: 10,

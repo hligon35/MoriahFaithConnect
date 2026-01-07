@@ -211,62 +211,6 @@ export function AccountScreen() {
 
         <View style={styles.toggleRow}>
           <Text style={styles.toggleLabel} allowFontScaling>
-            Admin Controls
-          </Text>
-          <Switch
-            value={adminEnabled}
-            onValueChange={(v) => setAdminEnabled(v)}
-            trackColor={{ false: colors.highlight, true: colors.button }}
-            thumbColor={colors.background}
-            accessibilityLabel="Toggle admin controls"
-          />
-        </View>
-
-        {adminEnabled && (
-          <View style={styles.pushBlock}>
-            <Text style={styles.bodyText} allowFontScaling>
-              Remote Push (iOS dev build)
-            </Text>
-            <PrimaryButton
-              title="Register Push Token"
-              onPress={async () => {
-                setPushStatus('');
-                try {
-                  const token = await registerForRemotePushNotifications();
-                  if (!token) {
-                    setPushStatus('Could not register push token. Use a dev build on a real device.');
-                    return;
-                  }
-                  setPushToken(token);
-                  setPushStatus('Push token registered.');
-                } catch {
-                  setPushStatus('Could not register push token.');
-                }
-              }}
-            />
-            <PrimaryButton
-              title="Share Push Token"
-              disabled={!pushToken}
-              onPress={async () => {
-                if (!pushToken) return;
-                await Share.share({ message: pushToken });
-              }}
-            />
-            {!!pushStatus && (
-              <Text style={styles.statusText} allowFontScaling>
-                {pushStatus}
-              </Text>
-            )}
-            {!!pushToken && (
-              <Text style={styles.pushTokenText} allowFontScaling selectable>
-                {pushToken}
-              </Text>
-            )}
-          </View>
-        )}
-
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel} allowFontScaling>
             Show email
           </Text>
           <Switch

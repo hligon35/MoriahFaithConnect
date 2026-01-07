@@ -32,7 +32,8 @@ function TabsHeader({ onPressAccount, onPressDev }: { onPressAccount: () => void
   };
 
   return (
-    <View style={[styles.headerWrap, { height: insets.top + 56 + extraDrop }]}
+    <View
+      style={styles.headerWrap}
       accessibilityRole="header"
     >
       <SafeAreaView edges={['top']} style={styles.headerSafe}>
@@ -67,12 +68,29 @@ function TabsHeader({ onPressAccount, onPressDev }: { onPressAccount: () => void
 
       {adminEnabled && (
         <View style={styles.headerTotals} accessibilityRole="summary" accessibilityLabel="Collection totals">
-          <Text style={styles.headerTotalsText} allowFontScaling>
-            Donations: {money(collectionTotals.donationsCents)}
+          <Text style={styles.headerTotalsTitle} allowFontScaling>
+            Collection
           </Text>
-          <Text style={styles.headerTotalsText} allowFontScaling>
-            Tithes: {money(collectionTotals.tithesCents)}
-          </Text>
+
+          <View style={styles.headerTotalsRow}>
+            <View style={styles.headerTotalsCol}>
+              <Text style={styles.headerTotalsLabel} allowFontScaling>
+                Donations
+              </Text>
+              <Text style={styles.headerTotalsValue} allowFontScaling numberOfLines={1}>
+                {money(collectionTotals.donationsCents)}
+              </Text>
+            </View>
+
+            <View style={styles.headerTotalsCol}>
+              <Text style={styles.headerTotalsLabel} allowFontScaling>
+                Tithes
+              </Text>
+              <Text style={styles.headerTotalsValue} allowFontScaling numberOfLines={1}>
+                {money(collectionTotals.tithesCents)}
+              </Text>
+            </View>
+          </View>
         </View>
       )}
 
@@ -85,9 +103,9 @@ export function TabsNavigator() {
   const stackNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
   const [devMenuOpen, setDevMenuOpen] = useState(false);
-  const { setAdminEnabled, setAdminViewOnly } = useAdmin();
+  const { adminEnabled, setAdminEnabled, setAdminViewOnly } = useAdmin();
   const extraDrop = Math.round(56 * 0.25);
-  const devMenuTop = insets.top + 56 + extraDrop;
+  const devMenuTop = insets.top + 56 + (adminEnabled ? styles.headerTotalsReservedHeight.height : 0) + extraDrop;
 
   return (
     <>
@@ -234,16 +252,45 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text,
   },
   headerTotals: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingBottom: 6,
-    gap: 12,
+    paddingTop: 2,
+    paddingBottom: 10,
+    gap: 6,
   },
-  headerTotalsText: {
+  headerTotalsTitle: {
     color: colors.primary,
     fontSize: 14,
     fontWeight: '900',
+    textAlign: 'center',
+  },
+  headerTotalsRow: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  headerTotalsCol: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 2,
+  },
+  headerTotalsLabel: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  headerTotalsValue: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: '900',
+    minWidth: 0,
+    textAlign: 'center',
+  },
+  headerTotalsReservedHeight: {
+    height: 32,
   },
   devBackdrop: {
     ...StyleSheet.absoluteFillObject,

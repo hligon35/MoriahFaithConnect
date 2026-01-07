@@ -26,12 +26,37 @@ function formatSelectedDayLabel(dateKey: string) {
   return date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
+function parseClockTimeLabel(baseDate: Date, timeLabel: string) {
+  const match = timeLabel.trim().match(/^([0-1]?\d):([0-5]\d)\s*(AM|PM)$/i);
+  if (!match) return null;
+
+  const hours12 = Number(match[1]);
+  const minutes = Number(match[2]);
+  const meridiem = match[3].toUpperCase();
+  if (Number.isNaN(hours12) || Number.isNaN(minutes)) return null;
+  if (hours12 < 1 || hours12 > 12) return null;
+
+  let hours24 = hours12 % 12;
+  if (meridiem === 'PM') hours24 += 12;
+
+  const dt = new Date(baseDate);
+  dt.setHours(hours24, minutes, 0, 0);
+  return dt;
+}
+
+function dateFromKey(dateKey: string) {
+  const [y, m, d] = dateKey.split('-').map((v) => Number(v));
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
 export function EventsScreen() {
   const { adminEnabled, adminViewOnly } = useAdmin();
 
   const [eventItems, setEventItems] = useState<ChurchEvent[]>(events);
-  const [adminAddOpen, setAdminAddOpen] = useState(false);
-  const [adminDraft, setAdminDraft] = useState({ title: '', startsAt: '', location: '' });
+  const [adminDayOpen, setAdminDayOpen] = useState(false);
+  const [adminDayKey, setAdminDayKey] = useState<string | undefined>(undefined);
+  const [adminEditMode, setAdminEditMode] = useState(false);
+  const [adminEditDraft, setAdminEditDraft] = useState({ id: '', title: '', timeLabel: '', location: '' });
 
   const [reminderEnabledById, setReminderEnabledById] = useState<Record<string, boolean>>({});
   const [statusText, setStatusText] = useState('');
@@ -78,6 +103,11 @@ export function EventsScreen() {
     return sorted.filter((e) => toLocalDateKey(new Date(e.startsAt)) === selectedDate);
   }, [sorted, selectedDate]);
 
+  const eventsForAdminDay = useMemo(() => {
+    if (!adminDayKey) return [];
+    return sorted.filter((e) => toLocalDateKey(new Date(e.startsAt)) === adminDayKey);
+  }, [adminDayKey, sorted]);
+
   useEffect(() => {
     (async () => {
       const entries = await Promise.all(
@@ -94,150 +124,198 @@ export function EventsScreen() {
 
   return (
     <ScreenContainer>
-      {adminEnabled && (
-        <SectionCard
-          title="Admin: Events"
-          headerRight={
-            <IconButton
-              icon="add"
-              accessibilityLabel="Add event"
-              onPress={() => {
-                setAdminDraft({ title: '', startsAt: new Date().toISOString(), location: '' });
-                setAdminAddOpen(true);
-              }}
-              iconColor={colors.primary}
-              variant="outlined"
-              iconSize={22}
-              buttonSize={34}
-            />
-          }
-        >
+      {adminEnabled && adminViewOnly && (
+        <SectionCard title="Admin: Events">
           <Text style={styles.bodyText} allowFontScaling>
-            Add/edit/remove calendar events.
+            Tap a date to view that day.
           </Text>
 
-          <View style={styles.adminEventList}>
-            {sorted.slice(0, 12).map((item) => {
-              const startsAt = new Date(item.startsAt);
-              return (
-                <View key={item.id} style={styles.adminEventRow}>
-                  <View style={styles.adminEventInfo}>
-                    <Text style={styles.adminEventTitle} allowFontScaling numberOfLines={1}>
-                      {item.title}
-                    </Text>
-                    <Text style={styles.adminEventMeta} allowFontScaling numberOfLines={1}>
-                      {formatLocalDateTime(startsAt)} · {item.location}
-                    </Text>
-                  </View>
-                  <IconButton
-                    icon="delete"
-                    accessibilityLabel={`Delete event ${item.title}`}
-                    onPress={async () => {
-                      const remaining = sorted.filter((e) => e.id !== item.id);
-                      await adminSave(remaining);
-                    }}
-                    iconSize={22}
-                    buttonSize={34}
-                    variant="outlined"
-                  />
-                </View>
-              );
-            })}
-          </View>
+          <Calendar
+            accessibilityLabel="Admin monthly calendar"
+            markedDates={markedDates}
+            onDayPress={(day) => {
+              setAdminDayKey(day.dateString);
+              setAdminEditMode(false);
+              setAdminEditDraft({ id: '', title: '', timeLabel: '', location: '' });
+              setAdminDayOpen(true);
+            }}
+            theme={
+              {
+                calendarBackground: colors.background,
+                textSectionTitleColor: colors.text,
+                dayTextColor: colors.text,
+                monthTextColor: colors.text,
+                arrowColor: colors.text,
+                todayTextColor: colors.button,
+                selectedDayTextColor: colors.primary,
+                textDayFontWeight: '700',
+                textMonthFontWeight: '900',
+                textDayHeaderFontWeight: '800',
+              } as any
+            }
+            style={styles.calendar}
+          />
         </SectionCard>
       )}
 
       <Modal
-        visible={adminAddOpen}
+        visible={adminDayOpen}
         transparent
         animationType="fade"
-        onRequestClose={() => setAdminAddOpen(false)}
+        onRequestClose={() => setAdminDayOpen(false)}
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard} accessibilityViewIsModal>
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleWrap}>
                 <Text style={styles.modalTitle} allowFontScaling>
-                  Add Event
+                  {adminDayKey ? formatSelectedDayLabel(adminDayKey) : 'Day'}
                 </Text>
                 <Text style={styles.modalSubtitle} allowFontScaling>
-                  Use an ISO timestamp for start time.
+                  {adminEditMode ? 'Edit details, then save.' : 'View events for this day.'}
                 </Text>
               </View>
-              <IconButton
-                icon="close"
-                accessibilityLabel="Close"
-                onPress={() => setAdminAddOpen(false)}
-                iconSize={22}
-                buttonSize={36}
-              />
+
+              {!adminEditMode ? (
+                <IconButton
+                  icon="edit"
+                  accessibilityLabel="Edit day"
+                  onPress={() => {
+                    setAdminEditMode(true);
+                    setAdminEditDraft({ id: '', title: '', timeLabel: '', location: '' });
+                  }}
+                  iconSize={22}
+                  buttonSize={36}
+                />
+              ) : (
+                <IconButton
+                  icon="close"
+                  accessibilityLabel="Close"
+                  onPress={() => setAdminDayOpen(false)}
+                  iconSize={22}
+                  buttonSize={36}
+                />
+              )}
             </View>
 
             <View style={styles.modalDivider} />
 
-            <Text style={styles.modalFieldLabel} allowFontScaling>
-              Title
-            </Text>
-            <TextInput
-              value={adminDraft.title}
-              onChangeText={(t) => setAdminDraft((d) => ({ ...d, title: t }))}
-              placeholder="Bible Study"
-              placeholderTextColor={colors.text}
-              style={styles.modalInput}
-              accessibilityLabel="Event title"
-            />
+            {!adminEditMode ? (
+              <View style={{ gap: 10 }}>
+                {eventsForAdminDay.length === 0 ? (
+                  <Text style={styles.bodyText} allowFontScaling>
+                    No events for this day.
+                  </Text>
+                ) : (
+                  eventsForAdminDay.map((item) => {
+                    const startsAt = new Date(item.startsAt);
+                    return (
+                      <Pressable
+                        key={item.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Edit ${item.title}`}
+                        onPress={() => {
+                          const t = startsAt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+                          setAdminEditDraft({ id: item.id, title: item.title, timeLabel: t, location: item.location });
+                          setAdminEditMode(true);
+                        }}
+                        style={({ pressed }) => [styles.adminEventRow, pressed && styles.pressed]}
+                      >
+                        <View style={styles.adminEventInfo}>
+                          <Text style={styles.adminEventTitle} allowFontScaling numberOfLines={1}>
+                            {item.title}
+                          </Text>
+                          <Text style={styles.adminEventMeta} allowFontScaling numberOfLines={1}>
+                            {formatLocalDateTime(startsAt)} · {item.location}
+                          </Text>
+                        </View>
+                        <MaterialIcons name="edit" size={22} color={colors.text} />
+                      </Pressable>
+                    );
+                  })
+                )}
 
-            <Text style={styles.modalFieldLabel} allowFontScaling>
-              Starts At (ISO)
-            </Text>
-            <TextInput
-              value={adminDraft.startsAt}
-              onChangeText={(t) => setAdminDraft((d) => ({ ...d, startsAt: t }))}
-              placeholder={new Date().toISOString()}
-              placeholderTextColor={colors.text}
-              style={styles.modalInput}
-              autoCapitalize="none"
-              autoCorrect={false}
-              accessibilityLabel="Event start time"
-            />
+                <View style={styles.modalActionRow}>
+                  <PrimaryButton title="Close" onPress={() => setAdminDayOpen(false)} />
+                </View>
+              </View>
+            ) : (
+              <View style={{ gap: 10 }}>
+                <Text style={styles.modalFieldLabel} allowFontScaling>
+                  Title
+                </Text>
+                <TextInput
+                  value={adminEditDraft.title}
+                  onChangeText={(t) => setAdminEditDraft((d) => ({ ...d, title: t }))}
+                  placeholder="Bible Study"
+                  placeholderTextColor={colors.text}
+                  style={styles.modalInput}
+                  accessibilityLabel="Event title"
+                />
 
-            <Text style={styles.modalFieldLabel} allowFontScaling>
-              Location
-            </Text>
-            <TextInput
-              value={adminDraft.location}
-              onChangeText={(t) => setAdminDraft((d) => ({ ...d, location: t }))}
-              placeholder="Fellowship Hall"
-              placeholderTextColor={colors.text}
-              style={styles.modalInput}
-              accessibilityLabel="Event location"
-            />
+                <Text style={styles.modalFieldLabel} allowFontScaling>
+                  Time
+                </Text>
+                <TextInput
+                  value={adminEditDraft.timeLabel}
+                  onChangeText={(t) => setAdminEditDraft((d) => ({ ...d, timeLabel: t }))}
+                  placeholder="6:30 PM"
+                  placeholderTextColor={colors.text}
+                  style={styles.modalInput}
+                  accessibilityLabel="Event time"
+                />
 
-            <View style={styles.modalActionRow}>
-              <PrimaryButton title="Cancel" onPress={() => setAdminAddOpen(false)} />
-              <PrimaryButton
-                title="Save"
-                onPress={async () => {
-                  const title = adminDraft.title.trim();
-                  const location = adminDraft.location.trim();
-                  const startsAt = adminDraft.startsAt.trim();
-                  if (!title || !location || !startsAt) return;
+                <Text style={styles.modalFieldLabel} allowFontScaling>
+                  Location
+                </Text>
+                <TextInput
+                  value={adminEditDraft.location}
+                  onChangeText={(t) => setAdminEditDraft((d) => ({ ...d, location: t }))}
+                  placeholder="Fellowship Hall"
+                  placeholderTextColor={colors.text}
+                  style={styles.modalInput}
+                  accessibilityLabel="Event location"
+                />
 
-                  const dt = new Date(startsAt);
-                  if (Number.isNaN(dt.getTime())) return;
+                <View style={styles.modalActionRow}>
+                  <PrimaryButton
+                    title="Cancel"
+                    onPress={() => {
+                      setAdminEditMode(false);
+                      setAdminEditDraft({ id: '', title: '', timeLabel: '', location: '' });
+                    }}
+                  />
+                  <PrimaryButton
+                    title="Save"
+                    onPress={async () => {
+                      if (!adminDayKey) return;
+                      const title = adminEditDraft.title.trim();
+                      const location = adminEditDraft.location.trim();
+                      const timeLabel = adminEditDraft.timeLabel.trim();
+                      if (!title || !location || !timeLabel) return;
 
-                  const next: ChurchEvent = {
-                    id: `e-admin-${Date.now()}`,
-                    title,
-                    startsAt: dt.toISOString(),
-                    location,
-                  };
-                  await adminSave([next, ...eventItems]);
-                  setAdminAddOpen(false);
-                }}
-                disabled={!adminDraft.title.trim() || !adminDraft.location.trim() || !adminDraft.startsAt.trim()}
-              />
-            </View>
+                      const baseDate = dateFromKey(adminDayKey);
+                      const dt = parseClockTimeLabel(baseDate, timeLabel);
+                      if (!dt || Number.isNaN(dt.getTime())) return;
+
+                      const nextEvent: ChurchEvent = {
+                        id: adminEditDraft.id || `e-admin-${Date.now()}`,
+                        title,
+                        startsAt: dt.toISOString(),
+                        location,
+                      };
+
+                      const remaining = sorted.filter((e) => e.id !== nextEvent.id);
+                      await adminSave([nextEvent, ...remaining]);
+
+                      setAdminEditMode(false);
+                      setAdminEditDraft({ id: '', title: '', timeLabel: '', location: '' });
+                    }}
+                    disabled={!adminEditDraft.title.trim() || !adminEditDraft.timeLabel.trim() || !adminEditDraft.location.trim()}
+                  />
+                </View>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
