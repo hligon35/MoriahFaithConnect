@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { SectionCard } from '../components/SectionCard';
 import { colors } from '../../theme/colors';
-import { events } from '../data/events';
+import { events, type ChurchEvent } from '../data/events';
 import { ensureNotificationPermissions, formatLocalDateTime, isEventReminderEnabled, toggleEventReminder } from '../notifications/notifications';
 import { MaterialIcons } from '@expo/vector-icons';
+import { IconButton } from '../components/IconButton';
+import { useAdmin } from '../state/AdminContext';
+import { loadAdminEvents, saveAdminEvents } from '../storage/eventsAdminStore';
 
 function pad2(n: number) {
   return String(n).padStart(2, '0');
@@ -24,14 +27,27 @@ function formatSelectedDayLabel(dateKey: string) {
 }
 
 export function EventsScreen() {
+  const { adminEnabled } = useAdmin();
+
+  const [eventItems, setEventItems] = useState<ChurchEvent[]>(events);
+  const [adminAddOpen, setAdminAddOpen] = useState(false);
+  const [adminDraft, setAdminDraft] = useState({ title: '', startsAt: '', location: '' });
+
   const [reminderEnabledById, setReminderEnabledById] = useState<Record<string, boolean>>({});
   const [statusText, setStatusText] = useState('');
   const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
   const [rsvpById, setRsvpById] = useState<Record<string, boolean>>({});
 
-  const sorted = useMemo(() => {
-    return [...events].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+  useEffect(() => {
+    (async () => {
+      const stored = await loadAdminEvents();
+      if (stored && stored.length) setEventItems(stored);
+    })();
   }, []);
+
+  const sorted = useMemo(() => {
+    return [...eventItems].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+  }, [eventItems]);
 
   const markedDates = useMemo(() => {
     const marks: Record<string, { marked?: boolean; selected?: boolean; selectedColor?: string; dotColor?: string }> = {};
@@ -71,8 +87,132 @@ export function EventsScreen() {
     })();
   }, [sorted]);
 
+  const adminSave = async (next: ChurchEvent[]) => {
+    setEventItems(next);
+    await saveAdminEvents(next);
+  };
+
   return (
     <ScreenContainer>
+      {adminEnabled && (
+        <SectionCard
+          title="Admin: Events"
+          headerRight={
+            <IconButton
+              icon="add"
+              accessibilityLabel="Add event"
+              onPress={() => {
+                setAdminDraft({ title: '', startsAt: new Date().toISOString(), location: '' });
+                setAdminAddOpen(true);
+              }}
+              iconColor={colors.primary}
+              variant="outlined"
+              iconSize={22}
+              buttonSize={34}
+            />
+          }
+        >
+          <Text style={styles.bodyText} allowFontScaling>
+            Add/edit/remove calendar events.
+          </Text>
+        </SectionCard>
+      )}
+
+      <Modal
+        visible={adminAddOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAdminAddOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard} accessibilityViewIsModal>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalTitleWrap}>
+                <Text style={styles.modalTitle} allowFontScaling>
+                  Add Event
+                </Text>
+                <Text style={styles.modalSubtitle} allowFontScaling>
+                  Use an ISO timestamp for start time.
+                </Text>
+              </View>
+              <IconButton
+                icon="close"
+                accessibilityLabel="Close"
+                onPress={() => setAdminAddOpen(false)}
+                iconSize={22}
+                buttonSize={36}
+              />
+            </View>
+
+            <View style={styles.modalDivider} />
+
+            <Text style={styles.modalFieldLabel} allowFontScaling>
+              Title
+            </Text>
+            <TextInput
+              value={adminDraft.title}
+              onChangeText={(t) => setAdminDraft((d) => ({ ...d, title: t }))}
+              placeholder="Bible Study"
+              placeholderTextColor={colors.text}
+              style={styles.modalInput}
+              accessibilityLabel="Event title"
+            />
+
+            <Text style={styles.modalFieldLabel} allowFontScaling>
+              Starts At (ISO)
+            </Text>
+            <TextInput
+              value={adminDraft.startsAt}
+              onChangeText={(t) => setAdminDraft((d) => ({ ...d, startsAt: t }))}
+              placeholder={new Date().toISOString()}
+              placeholderTextColor={colors.text}
+              style={styles.modalInput}
+              autoCapitalize="none"
+              autoCorrect={false}
+              accessibilityLabel="Event start time"
+            />
+
+            <Text style={styles.modalFieldLabel} allowFontScaling>
+              Location
+            </Text>
+            <TextInput
+              value={adminDraft.location}
+              onChangeText={(t) => setAdminDraft((d) => ({ ...d, location: t }))}
+              placeholder="Fellowship Hall"
+              placeholderTextColor={colors.text}
+              style={styles.modalInput}
+              accessibilityLabel="Event location"
+            />
+
+            <View style={styles.modalActionRow}>
+              <PrimaryButton title="Cancel" onPress={() => setAdminAddOpen(false)} />
+              <PrimaryButton
+                title="Save"
+                onPress={async () => {
+                  const title = adminDraft.title.trim();
+                  const location = adminDraft.location.trim();
+                  const startsAt = adminDraft.startsAt.trim();
+                  if (!title || !location || !startsAt) return;
+
+                  const dt = new Date(startsAt);
+                  if (Number.isNaN(dt.getTime())) return;
+
+                  const next: ChurchEvent = {
+                    id: `e-admin-${Date.now()}`,
+                    title,
+                    startsAt: dt.toISOString(),
+                    location,
+                  };
+                  await adminSave([next, ...eventItems]);
+                  setAdminAddOpen(false);
+                }}
+                disabled={!adminDraft.title.trim() || !adminDraft.location.trim() || !adminDraft.startsAt.trim()}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <SectionCard title="Calendar">
         <Text style={styles.bodyText} allowFontScaling>
           Tap a day to see events.
@@ -134,6 +274,20 @@ export function EventsScreen() {
                       </View>
 
                       <View style={styles.dayEventActions}>
+                        {adminEnabled && (
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Delete event ${item.title}`}
+                            onPress={async () => {
+                              const remaining = sorted.filter((e) => e.id !== item.id);
+                              await adminSave(remaining);
+                            }}
+                            hitSlop={10}
+                            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+                          >
+                            <MaterialIcons name="delete" size={26} color={colors.text} />
+                          </Pressable>
+                        )}
                         <Pressable
                           accessibilityRole="button"
                           accessibilityLabel={reminderOn ? `Disable reminder for ${item.title}` : `Enable reminder for ${item.title}`}
@@ -164,6 +318,7 @@ export function EventsScreen() {
                           accessibilityLabel={rsvpOn ? `Remove RSVP for ${item.title}` : `RSVP for ${item.title}`}
                           onPress={() => setRsvpById((current) => ({ ...current, [item.id]: !rsvpOn }))}
                           hitSlop={10}
+
                           style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
                         >
                           <MaterialIcons
@@ -272,5 +427,63 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.9,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  modalCard: {
+    backgroundColor: colors.surface,
+    borderColor: colors.primary,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 14,
+    gap: 10,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  modalTitleWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  modalTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  modalSubtitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  modalDivider: {
+    height: 1,
+    backgroundColor: colors.primary,
+  },
+  modalFieldLabel: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  modalInput: {
+    borderColor: colors.primary,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: colors.background,
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  modalActionRow: {
+    gap: 10,
   },
 });

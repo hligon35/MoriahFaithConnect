@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Linking, Modal, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Linking, Modal, Pressable, Share, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { AvatarCircle } from '../components/AvatarCircle';
 import { IconButton } from '../components/IconButton';
@@ -15,13 +15,16 @@ import {
   ensureNotificationPermissions,
   formatLocalDateTime,
   getLiveStreamAlertStatus,
+  registerForRemotePushNotifications,
 } from '../notifications/notifications';
+import { getExpoPushToken } from '../notifications/notificationStore';
 import {
   defaultPrivacySettings,
   loadPrivacySettings,
   savePrivacySettings,
   type PrivacySettings,
 } from '../storage/privacyPrefs';
+import { useAdmin } from '../state/AdminContext';
 
 function passwordStrengthScore(password: string) {
   const p = password ?? '';
@@ -42,6 +45,7 @@ function passwordStrengthLabel(score: number) {
 }
 
 export function AccountScreen() {
+  const { adminEnabled, setAdminEnabled } = useAdmin();
   const directoryMe = useMemo(() => churchDirectory.find((m) => m.id === 'm-001'), []);
   const defaultAvatarMode = directoryMe?.photo ? 'directory' : 'initials';
 
@@ -68,12 +72,23 @@ export function AccountScreen() {
   const [privacy, setPrivacy] = useState<PrivacySettings>(defaultPrivacySettings);
   const [privacyLoaded, setPrivacyLoaded] = useState(false);
 
+  const [pushToken, setPushToken] = useState<string>('');
+  const [pushStatus, setPushStatus] = useState<string>('');
+
   useEffect(() => {
     (async () => {
       const status = await getLiveStreamAlertStatus();
       setLiveAlertsEnabled(status.enabled);
     })();
   }, []);
+
+  useEffect(() => {
+    (async () => {
+      if (!adminEnabled) return;
+      const token = await getExpoPushToken();
+      setPushToken(token ?? '');
+    })();
+  }, [adminEnabled]);
 
   useEffect(() => {
     (async () => {
@@ -193,6 +208,62 @@ export function AccountScreen() {
         <Text style={styles.bodyText} allowFontScaling>
           Manage your directory privacy and app preferences.
         </Text>
+
+        <View style={styles.toggleRow}>
+          <Text style={styles.toggleLabel} allowFontScaling>
+            Admin Controls
+          </Text>
+          <Switch
+            value={adminEnabled}
+            onValueChange={(v) => setAdminEnabled(v)}
+            trackColor={{ false: colors.highlight, true: colors.button }}
+            thumbColor={colors.background}
+            accessibilityLabel="Toggle admin controls"
+          />
+        </View>
+
+        {adminEnabled && (
+          <View style={styles.pushBlock}>
+            <Text style={styles.bodyText} allowFontScaling>
+              Remote Push (iOS dev build)
+            </Text>
+            <PrimaryButton
+              title="Register Push Token"
+              onPress={async () => {
+                setPushStatus('');
+                try {
+                  const token = await registerForRemotePushNotifications();
+                  if (!token) {
+                    setPushStatus('Could not register push token. Use a dev build on a real device.');
+                    return;
+                  }
+                  setPushToken(token);
+                  setPushStatus('Push token registered.');
+                } catch {
+                  setPushStatus('Could not register push token.');
+                }
+              }}
+            />
+            <PrimaryButton
+              title="Share Push Token"
+              disabled={!pushToken}
+              onPress={async () => {
+                if (!pushToken) return;
+                await Share.share({ message: pushToken });
+              }}
+            />
+            {!!pushStatus && (
+              <Text style={styles.statusText} allowFontScaling>
+                {pushStatus}
+              </Text>
+            )}
+            {!!pushToken && (
+              <Text style={styles.pushTokenText} allowFontScaling selectable>
+                {pushToken}
+              </Text>
+            )}
+          </View>
+        )}
 
         <View style={styles.toggleRow}>
           <Text style={styles.toggleLabel} allowFontScaling>
@@ -555,6 +626,15 @@ const styles = StyleSheet.create({
   statusText: {
     color: colors.text,
     fontSize: 14,
+    fontWeight: '700',
+  },
+  pushBlock: {
+    gap: 10,
+    paddingTop: 12,
+  },
+  pushTokenText: {
+    color: colors.text,
+    fontSize: 12,
     fontWeight: '700',
   },
   modalBackdrop: {

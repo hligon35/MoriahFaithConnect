@@ -3,6 +3,7 @@ export type TodayService = {
   title: string;
   timeLabel: string;
   locationLabel: string;
+  itinerary?: string[];
 };
 
 export function getTodaysServices(date: Date = new Date()): TodayService[] {
@@ -17,18 +18,21 @@ export function getTodaysServices(date: Date = new Date()): TodayService[] {
         title: 'Sunday School',
         timeLabel: '9:30 AM',
         locationLabel: 'Education Wing',
+        itinerary: ['Welcome', 'Lesson', 'Discussion', 'Prayer'],
       },
       {
         id: 'svc-sun-worship',
         title: 'Morning Worship',
         timeLabel: '11:00 AM',
         locationLabel: 'Sanctuary / Live Stream',
+        itinerary: ['Welcome', 'Prayer', 'Worship', 'Message', 'Benediction'],
       },
       {
         id: 'svc-sun-youth',
         title: 'Youth Focus',
         timeLabel: '5:00 PM',
         locationLabel: 'Youth Center',
+        itinerary: ['Welcome', 'Worship', 'Message', 'Small Groups', 'Closing Prayer'],
       },
     ];
   }
@@ -40,6 +44,7 @@ export function getTodaysServices(date: Date = new Date()): TodayService[] {
         title: 'Bible Study',
         timeLabel: '6:30 PM',
         locationLabel: 'Fellowship Hall',
+        itinerary: ['Welcome', 'Study', 'Discussion', 'Prayer'],
       },
     ];
   }
@@ -50,6 +55,7 @@ export function getTodaysServices(date: Date = new Date()): TodayService[] {
       title: 'Prayer',
       timeLabel: 'Today',
       locationLabel: 'See Events for schedule',
+      itinerary: ['Itinerary coming soon.'],
     },
   ];
 }

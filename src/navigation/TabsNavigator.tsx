@@ -17,12 +17,19 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from './types';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useAdmin } from '../state/AdminContext';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
 function TabsHeader({ onPressAccount, onPressDev }: { onPressAccount: () => void; onPressDev: () => void }) {
   const insets = useSafeAreaInsets();
   const extraDrop = Math.round(56 * 0.25);
+  const { adminEnabled, collectionTotals } = useAdmin();
+
+  const money = (cents: number) => {
+    const dollars = (cents ?? 0) / 100;
+    return dollars.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
+  };
 
   return (
     <View style={[styles.headerWrap, { height: insets.top + 56 + extraDrop }]}
@@ -55,6 +62,18 @@ function TabsHeader({ onPressAccount, onPressDev }: { onPressAccount: () => void
           </View>
         </View>
       </SafeAreaView>
+
+      {adminEnabled && (
+        <View style={styles.headerTotals} accessibilityRole="summary" accessibilityLabel="Collection totals">
+          <Text style={styles.headerTotalsText} allowFontScaling>
+            Donations: {money(collectionTotals.donationsCents)}
+          </Text>
+          <Text style={styles.headerTotalsText} allowFontScaling>
+            Tithes: {money(collectionTotals.tithesCents)}
+          </Text>
+        </View>
+      )}
+
       <View style={[styles.headerDrop, { height: extraDrop }]} />
     </View>
   );
@@ -190,6 +209,18 @@ const styles = StyleSheet.create({
   },
   headerDrop: {
     backgroundColor: colors.text,
+  },
+  headerTotals: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 6,
+    gap: 12,
+  },
+  headerTotalsText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '900',
   },
   devBackdrop: {
     ...StyleSheet.absoluteFillObject,

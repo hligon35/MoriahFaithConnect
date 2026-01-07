@@ -20,6 +20,15 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { defaultPrivacySettings, loadPrivacySettings, type PrivacySettings } from '../storage/privacyPrefs';
 import { prayerWallEntries, type PrayerWallEntry } from '../data/prayerWall';
 import { ministries, type Ministry } from '../data/ministries';
+import { useAdmin } from '../state/AdminContext';
+import {
+  loadDirectoryOverride,
+  loadMinistriesOverride,
+  loadPrayersOverride,
+  saveDirectoryOverride,
+  saveMinistriesOverride,
+  savePrayersOverride,
+} from '../storage/communityAdminStore';
 
 function formatPrayerAge(createdAt: string, now: Date) {
   const created = new Date(createdAt);
@@ -61,14 +70,33 @@ async function openMaps(address: string) {
 }
 
 export function CommunityScreen() {
+  const { adminEnabled } = useAdmin();
+
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<DirectoryMember | null>(null);
   const [selectedMinistry, setSelectedMinistry] = useState<Ministry | null>(null);
   const [myPrivacy, setMyPrivacy] = useState<PrivacySettings>(defaultPrivacySettings);
 
+  const [directoryMembers, setDirectoryMembers] = useState<DirectoryMember[]>(churchDirectory);
+  const [ministryItems, setMinistryItems] = useState<Ministry[]>(ministries);
+
   const [prayers, setPrayers] = useState<PrayerWallEntry[]>(prayerWallEntries);
   const [addPrayerOpen, setAddPrayerOpen] = useState(false);
   const [prayerNameDraft, setPrayerNameDraft] = useState('');
+
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [memberDraft, setMemberDraft] = useState({ name: '', role: '', email: '', phone: '', address: '' });
+
+  const [addMinistryOpen, setAddMinistryOpen] = useState(false);
+  const [ministryDraft, setMinistryDraft] = useState({
+    name: '',
+    summary: '',
+    contactName: '',
+    contactRole: '',
+    contactEmail: '',
+    contactPhone: '',
+    meetingSchedule: '',
+  });
 
   useEffect(() => {
     (async () => {
@@ -77,18 +105,31 @@ export function CommunityScreen() {
     })();
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      const dir = await loadDirectoryOverride();
+      if (dir && dir.length) setDirectoryMembers(dir as DirectoryMember[]);
+
+      const mins = await loadMinistriesOverride();
+      if (mins && mins.length) setMinistryItems(mins);
+
+      const pw = await loadPrayersOverride();
+      if (pw && pw.length) setPrayers(pw);
+    })();
+  }, []);
+
   const filteredDirectory = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return churchDirectory;
+    if (!q) return directoryMembers;
 
-    return churchDirectory.filter((m) => {
+    return directoryMembers.filter((m) => {
       return (
         m.name.toLowerCase().includes(q) ||
         m.role.toLowerCase().includes(q) ||
         m.email.toLowerCase().includes(q)
       );
     });
-  }, [query]);
+  }, [directoryMembers, query]);
 
   const selectedVisibility = useMemo<PrivacySettings>(() => {
     // Placeholder: treat member m-001 as the current user whose privacy is configurable in Settings.
@@ -100,9 +141,25 @@ export function CommunityScreen() {
   return (
     <ScreenContainer>
       <View style={styles.directoryCard}>
-        <Text style={styles.directoryTitle} allowFontScaling>
-          Church Directory
-        </Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.directoryTitle} allowFontScaling>
+            Church Directory
+          </Text>
+          {adminEnabled && (
+            <IconButton
+              icon="add"
+              accessibilityLabel="Add directory member"
+              onPress={() => {
+                setMemberDraft({ name: '', role: '', email: '', phone: '', address: '' });
+                setAddMemberOpen(true);
+              }}
+              iconColor={colors.primary}
+              variant="outlined"
+              iconSize={22}
+              buttonSize={34}
+            />
+          )}
+        </View>
 
         <View style={styles.searchRow}>
           <MaterialIcons name="search" size={22} color={colors.text} />
@@ -153,13 +210,37 @@ export function CommunityScreen() {
         />
 
         <View style={styles.ministriesSection}>
-          <Text style={styles.directoryTitle} allowFontScaling>
-            Ministries
-          </Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.directoryTitle} allowFontScaling>
+              Ministries
+            </Text>
+            {adminEnabled && (
+              <IconButton
+                icon="add"
+                accessibilityLabel="Add ministry"
+                onPress={() => {
+                  setMinistryDraft({
+                    name: '',
+                    summary: '',
+                    contactName: '',
+                    contactRole: '',
+                    contactEmail: '',
+                    contactPhone: '',
+                    meetingSchedule: '',
+                  });
+                  setAddMinistryOpen(true);
+                }}
+                iconColor={colors.primary}
+                variant="outlined"
+                iconSize={22}
+                buttonSize={34}
+              />
+            )}
+          </View>
 
           <FlatList
             horizontal
-            data={ministries}
+            data={ministryItems}
             keyExtractor={(item) => item.id}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.directoryList}
@@ -176,6 +257,22 @@ export function CommunityScreen() {
                 <Text style={styles.ministrySummary} allowFontScaling numberOfLines={2}>
                   {item.summary}
                 </Text>
+                {adminEnabled && (
+                  <View style={styles.adminInlineAction}>
+                    <IconButton
+                      icon="delete"
+                      accessibilityLabel={`Delete ministry ${item.name}`}
+                      onPress={async () => {
+                        const next = ministryItems.filter((m) => m.id !== item.id);
+                        setMinistryItems(next);
+                        await saveMinistriesOverride(next);
+                      }}
+                      iconSize={22}
+                      buttonSize={34}
+                      variant="outlined"
+                    />
+                  </View>
+                )}
               </Pressable>
             )}
           />
@@ -214,10 +311,26 @@ export function CommunityScreen() {
               <Text style={styles.prayerName} allowFontScaling numberOfLines={1}>
                 {item.name}
               </Text>
-              <View style={styles.prayerAgeBadge} accessibilityRole="text">
-                <Text style={styles.prayerAgeText} allowFontScaling>
-                  {formatPrayerAge(item.createdAt, new Date())}
-                </Text>
+              <View style={styles.prayerRight}>
+                <View style={styles.prayerAgeBadge} accessibilityRole="text">
+                  <Text style={styles.prayerAgeText} allowFontScaling>
+                    {formatPrayerAge(item.createdAt, new Date())}
+                  </Text>
+                </View>
+                {adminEnabled && (
+                  <IconButton
+                    icon="delete"
+                    accessibilityLabel={`Remove prayer name ${item.name}`}
+                    onPress={async () => {
+                      const next = prayers.filter((p) => p.id !== item.id);
+                      setPrayers(next);
+                      await savePrayersOverride(next);
+                    }}
+                    iconSize={20}
+                    buttonSize={34}
+                    variant="outlined"
+                  />
+                )}
               </View>
             </View>
           ))}
@@ -274,13 +387,171 @@ export function CommunityScreen() {
                   if (!name) return;
 
                   const createdAt = new Date().toISOString();
-                  setPrayers((current) => [
-                    { id: `pw-${Date.now()}`, name, createdAt },
-                    ...current,
-                  ]);
+                  setPrayers((current) => {
+                    const next = [{ id: `pw-${Date.now()}`, name, createdAt }, ...current];
+                    savePrayersOverride(next).catch(() => {});
+                    return next;
+                  });
                   setAddPrayerOpen(false);
                 }}
                 disabled={!prayerNameDraft.trim()}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={addMemberOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAddMemberOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard} accessibilityViewIsModal>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalTitleWrap}>
+                <Text style={styles.modalName} allowFontScaling>
+                  Add Directory Member
+                </Text>
+                <Text style={styles.modalRole} allowFontScaling>
+                  Add/edit/remove directory members.
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                onPress={() => setAddMemberOpen(false)}
+                hitSlop={10}
+              >
+                <MaterialIcons name="close" size={26} color={colors.text} />
+              </Pressable>
+            </View>
+
+            <TextInput
+              value={memberDraft.name}
+              onChangeText={(t) => setMemberDraft((d) => ({ ...d, name: t }))}
+              placeholder="Name"
+              placeholderTextColor={colors.text}
+              style={styles.addPrayerInput}
+              autoCorrect={false}
+              autoCapitalize="words"
+              accessibilityLabel="Member name"
+            />
+            <TextInput
+              value={memberDraft.role}
+              onChangeText={(t) => setMemberDraft((d) => ({ ...d, role: t }))}
+              placeholder="Role"
+              placeholderTextColor={colors.text}
+              style={styles.addPrayerInput}
+              autoCorrect={false}
+              autoCapitalize="words"
+              accessibilityLabel="Member role"
+            />
+
+            <View style={styles.addPrayerActions}>
+              <PrimaryButton title="Cancel" onPress={() => setAddMemberOpen(false)} />
+              <PrimaryButton
+                title="Save"
+                onPress={async () => {
+                  const name = memberDraft.name.trim();
+                  const role = memberDraft.role.trim();
+                  if (!name || !role) return;
+
+                  const next = [
+                    {
+                      id: `m-admin-${Date.now()}`,
+                      name,
+                      role,
+                      email: memberDraft.email ?? '',
+                      phone: memberDraft.phone ?? '',
+                      address: memberDraft.address ?? '',
+                    } as DirectoryMember,
+                    ...directoryMembers,
+                  ];
+                  setDirectoryMembers(next);
+                  await saveDirectoryOverride(next);
+                  setAddMemberOpen(false);
+                }}
+                disabled={!memberDraft.name.trim() || !memberDraft.role.trim()}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={addMinistryOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAddMinistryOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard} accessibilityViewIsModal>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalTitleWrap}>
+                <Text style={styles.modalName} allowFontScaling>
+                  Add Ministry
+                </Text>
+                <Text style={styles.modalRole} allowFontScaling>
+                  Add/edit/remove ministries.
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                onPress={() => setAddMinistryOpen(false)}
+                hitSlop={10}
+              >
+                <MaterialIcons name="close" size={26} color={colors.text} />
+              </Pressable>
+            </View>
+
+            <TextInput
+              value={ministryDraft.name}
+              onChangeText={(t) => setMinistryDraft((d) => ({ ...d, name: t }))}
+              placeholder="Ministry name"
+              placeholderTextColor={colors.text}
+              style={styles.addPrayerInput}
+              autoCorrect={false}
+              autoCapitalize="words"
+              accessibilityLabel="Ministry name"
+            />
+            <TextInput
+              value={ministryDraft.summary}
+              onChangeText={(t) => setMinistryDraft((d) => ({ ...d, summary: t }))}
+              placeholder="Summary"
+              placeholderTextColor={colors.text}
+              style={styles.addPrayerInput}
+              accessibilityLabel="Ministry summary"
+            />
+
+            <View style={styles.addPrayerActions}>
+              <PrimaryButton title="Cancel" onPress={() => setAddMinistryOpen(false)} />
+              <PrimaryButton
+                title="Save"
+                onPress={async () => {
+                  const name = ministryDraft.name.trim();
+                  if (!name) return;
+
+                  const next: Ministry = {
+                    id: `min-admin-${Date.now()}`,
+                    name,
+                    summary: ministryDraft.summary.trim(),
+                    contactName: ministryDraft.contactName.trim(),
+                    contactRole: ministryDraft.contactRole.trim(),
+                    contactEmail: ministryDraft.contactEmail.trim(),
+                    contactPhone: ministryDraft.contactPhone.trim(),
+                    meetingSchedule: ministryDraft.meetingSchedule.trim(),
+                    members: [],
+                  };
+
+                  const updated = [next, ...ministryItems];
+                  setMinistryItems(updated);
+                  await saveMinistriesOverride(updated);
+                  setAddMinistryOpen(false);
+                }}
+                disabled={!ministryDraft.name.trim()}
               />
             </View>
           </View>
@@ -479,6 +750,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 16,
     padding: 14,
+    gap: 12,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 12,
   },
   directoryTitle: {

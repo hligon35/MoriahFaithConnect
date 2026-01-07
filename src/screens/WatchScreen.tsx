@@ -1,15 +1,14 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { SectionCard } from '../components/SectionCard';
+import { IconButton } from '../components/IconButton';
+import { PrimaryButton } from '../components/PrimaryButton';
 import { colors } from '../../theme/colors';
+import { useAdmin } from '../state/AdminContext';
+import { loadArchiveCategories, saveArchiveCategories, type ArchiveCategory } from '../storage/watchAdminStore';
 
-type ArchiveCategory = {
-  id: string;
-  title: string;
-  description: string;
-};
-
-const archiveCategories: ArchiveCategory[] = [
+const defaultArchiveCategories: ArchiveCategory[] = [
   {
     id: 'sunday-sermons',
     title: 'Sunday Sermons',
@@ -28,6 +27,23 @@ const archiveCategories: ArchiveCategory[] = [
 ];
 
 export function WatchScreen() {
+  const { adminEnabled } = useAdmin();
+  const [categories, setCategories] = useState<ArchiveCategory[]>(defaultArchiveCategories);
+  const [adminAddOpen, setAdminAddOpen] = useState(false);
+  const [adminDraft, setAdminDraft] = useState({ title: '', description: '' });
+
+  useEffect(() => {
+    (async () => {
+      const stored = await loadArchiveCategories();
+      if (stored && stored.length) setCategories(stored);
+    })();
+  }, []);
+
+  const adminSave = async (next: ArchiveCategory[]) => {
+    setCategories(next);
+    await saveArchiveCategories(next);
+  };
+
   return (
     <ScreenContainer contentContainerStyle={styles.containerTight}>
       <View style={styles.liveCardWrap} accessibilityRole="summary">
@@ -54,13 +70,31 @@ export function WatchScreen() {
         </View>
       </View>
 
-      <SectionCard title="Sermon Archive">
+      <SectionCard
+        title="Sermon Archive"
+        headerRight={
+          adminEnabled ? (
+            <IconButton
+              icon="add"
+              accessibilityLabel="Add sermon archive category"
+              onPress={() => {
+                setAdminDraft({ title: '', description: '' });
+                setAdminAddOpen(true);
+              }}
+              iconColor={colors.primary}
+              variant="outlined"
+              iconSize={22}
+              buttonSize={34}
+            />
+          ) : undefined
+        }
+      >
         <Text style={styles.bodyText} allowFontScaling>
           Browse by category.
         </Text>
 
         <View style={styles.archiveList}>
-          {archiveCategories.map((category) => (
+          {categories.map((category) => (
             <Pressable
               key={category.id}
               accessibilityRole="button"
@@ -68,6 +102,18 @@ export function WatchScreen() {
               onPress={() => {}}
               style={({ pressed }) => [styles.archiveCard, pressed && styles.archiveCardPressed]}
             >
+              {adminEnabled && (
+                <View style={styles.archiveAdminRow}>
+                  <IconButton
+                    icon="delete"
+                    accessibilityLabel={`Delete category ${category.title}`}
+                    onPress={() => adminSave(categories.filter((c) => c.id !== category.id))}
+                    iconSize={22}
+                    buttonSize={34}
+                    variant="outlined"
+                  />
+                </View>
+              )}
               <Text style={styles.archiveTitle} allowFontScaling>
                 {category.title}
               </Text>
@@ -81,6 +127,83 @@ export function WatchScreen() {
           ))}
         </View>
       </SectionCard>
+
+      <Modal
+        visible={adminAddOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAdminAddOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard} accessibilityViewIsModal>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalTitleWrap}>
+                <Text style={styles.modalTitle} allowFontScaling>
+                  Add Archive Category
+                </Text>
+                <Text style={styles.modalSubtitle} allowFontScaling>
+                  Add/edit sermon archive sections.
+                </Text>
+              </View>
+              <IconButton
+                icon="close"
+                accessibilityLabel="Close"
+                onPress={() => setAdminAddOpen(false)}
+                iconSize={22}
+                buttonSize={36}
+              />
+            </View>
+
+            <View style={styles.modalDivider} />
+
+            <Text style={styles.modalFieldLabel} allowFontScaling>
+              Title
+            </Text>
+            <TextInput
+              value={adminDraft.title}
+              onChangeText={(t) => setAdminDraft((d) => ({ ...d, title: t }))}
+              placeholder="Sunday Sermons"
+              placeholderTextColor={colors.text}
+              style={styles.modalInput}
+              accessibilityLabel="Category title"
+            />
+
+            <Text style={styles.modalFieldLabel} allowFontScaling>
+              Description
+            </Text>
+            <TextInput
+              value={adminDraft.description}
+              onChangeText={(t) => setAdminDraft((d) => ({ ...d, description: t }))}
+              placeholder="Weekly messages and series."
+              placeholderTextColor={colors.text}
+              style={styles.modalTextArea}
+              multiline
+              accessibilityLabel="Category description"
+            />
+
+            <View style={styles.modalActionRow}>
+              <PrimaryButton title="Cancel" onPress={() => setAdminAddOpen(false)} />
+              <PrimaryButton
+                title="Save"
+                onPress={async () => {
+                  const title = adminDraft.title.trim();
+                  const description = adminDraft.description.trim();
+                  if (!title) return;
+
+                  const next: ArchiveCategory = {
+                    id: `cat-${Date.now()}`,
+                    title,
+                    description,
+                  };
+                  await adminSave([next, ...categories]);
+                  setAdminAddOpen(false);
+                }}
+                disabled={!adminDraft.title.trim()}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -114,6 +237,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
   },
+  liveThumbFrame: {
+    width: 96,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderColor: colors.primary,
+    borderWidth: 1,
+    backgroundColor: colors.background,
+  },
   liveTitle: {
     color: colors.text,
     fontSize: 20,
@@ -128,7 +259,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 104 ,
     resizeMode: 'cover',
-    transform: [{ scale: 2 }],
+    transform: [{ scale: 1 }],
   },
   archiveList: {
     gap: 8,
@@ -140,6 +271,9 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 12,
     gap: 6,
+  },
+  archiveAdminRow: {
+    alignSelf: 'flex-end',
   },
   archiveCardPressed: {
     opacity: 0.9,
@@ -158,5 +292,77 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 14,
     fontWeight: '800',
+  },
+
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  modalCard: {
+    backgroundColor: colors.surface,
+    borderColor: colors.primary,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 14,
+    gap: 10,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  modalTitleWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  modalTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  modalSubtitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  modalDivider: {
+    height: 1,
+    backgroundColor: colors.primary,
+  },
+  modalFieldLabel: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  modalInput: {
+    borderColor: colors.primary,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: colors.background,
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  modalTextArea: {
+    borderColor: colors.primary,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minHeight: 96,
+    backgroundColor: colors.background,
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+    textAlignVertical: 'top',
+  },
+  modalActionRow: {
+    gap: 10,
   },
 });

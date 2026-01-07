@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const EVENT_REMINDERS_KEY = 'mfc.notifications.eventReminders';
 const LIVE_ALERT_KEY = 'mfc.notifications.liveAlertId';
+const EXPO_PUSH_TOKEN_KEY = 'mfc.notifications.expoPushToken';
 
 type EventReminderMap = Record<string, string>; // eventId -> notificationId
 
@@ -35,4 +36,20 @@ export async function setLiveAlertId(id: string | null): Promise<void> {
     return;
   }
   await AsyncStorage.setItem(LIVE_ALERT_KEY, id);
+}
+
+export async function getExpoPushToken(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(EXPO_PUSH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export async function setExpoPushToken(token: string | null): Promise<void> {
+  if (!token) {
+    await AsyncStorage.removeItem(EXPO_PUSH_TOKEN_KEY);
+    return;
+  }
+  await AsyncStorage.setItem(EXPO_PUSH_TOKEN_KEY, token);
 }

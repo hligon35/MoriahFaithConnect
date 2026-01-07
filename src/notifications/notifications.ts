@@ -1,7 +1,14 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 
-import { getEventReminderMap, getLiveAlertId, setEventReminderMap, setLiveAlertId } from './notificationStore';
+import {
+  getEventReminderMap,
+  getLiveAlertId,
+  setEventReminderMap,
+  setLiveAlertId,
+  setExpoPushToken,
+} from './notificationStore';
 
 // Keep notifications predictable in foreground
 Notifications.setNotificationHandler({
@@ -26,6 +33,26 @@ export async function ensureNotificationPermissions(): Promise<boolean> {
 
   const request = await Notifications.requestPermissionsAsync();
   return request.granted;
+}
+
+export async function registerForRemotePushNotifications(): Promise<string | null> {
+  const ok = await ensureNotificationPermissions();
+  if (!ok) return null;
+
+  // iOS remote push requires a physical device.
+  if (!Device.isDevice) return null;
+
+  const projectId =
+    Constants.easConfig?.projectId ??
+    Constants.expoConfig?.extra?.eas?.projectId ??
+    Constants.expoConfig?.extra?.projectId;
+
+  if (!projectId) return null;
+
+  const tokenResponse = await Notifications.getExpoPushTokenAsync({ projectId });
+  const token = tokenResponse.data;
+  await setExpoPushToken(token);
+  return token;
 }
 
 export function formatLocalDateTime(date: Date) {
