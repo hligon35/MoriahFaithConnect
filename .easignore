@@ -15,7 +15,7 @@ web-build/
 assets/scrapedImages/
 
 # local screenshots / exports in repo root
-*.png
+/*.png
 
 # git metadata
 .git/
