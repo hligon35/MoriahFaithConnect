@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 export type AuthRole = 'admin' | 'member';
 
@@ -133,6 +134,20 @@ async function writeJson<T>(key: string, value: T) {
   await AsyncStorage.setItem(key, JSON.stringify(value));
 }
 
+async function readSecureJson<T>(key: string): Promise<T | null> {
+  try {
+    const raw = await SecureStore.getItemAsync(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+async function writeSecureJson<T>(key: string, value: T) {
+  await SecureStore.setItemAsync(key, JSON.stringify(value));
+}
+
 export async function ensureAuthSeeded() {
   const existing = await readJson<any>(USERS_KEY);
   if (existing && Array.isArray(existing) && existing.length) {
@@ -160,7 +175,22 @@ export async function saveUsers(users: AuthUser[]) {
 }
 
 export async function loadSession(): Promise<AuthSession | null> {
-  const raw = await readJson<any>(SESSION_KEY);
+  // Prefer secure session storage.
+  let raw = await readSecureJson<any>(SESSION_KEY);
+
+  // Migrate legacy AsyncStorage session into SecureStore.
+  if (!raw) {
+    const legacy = await readJson<any>(SESSION_KEY);
+    if (legacy) {
+      raw = legacy;
+      try {
+        await writeSecureJson(SESSION_KEY, legacy);
+      } finally {
+        await AsyncStorage.removeItem(SESSION_KEY);
+      }
+    }
+  }
+
   if (!raw) return null;
   // Backward compatibility: previously stored as { username, signedInAtIso }
   const email =
@@ -176,10 +206,10 @@ export async function loadSession(): Promise<AuthSession | null> {
 
 export async function saveSession(session: AuthSession | null) {
   if (!session) {
-    await AsyncStorage.removeItem(SESSION_KEY);
+    await SecureStore.deleteItemAsync(SESSION_KEY);
     return;
   }
-  await writeJson(SESSION_KEY, session);
+  await writeSecureJson(SESSION_KEY, session);
 }
 
 export async function authenticateUser(input: { email: string; password: string }) {

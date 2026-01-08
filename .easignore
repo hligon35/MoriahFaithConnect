@@ -1,0 +1,21 @@
+# EAS build upload ignore list
+# This reduces upload size and speeds builds.
+
+# dependencies / caches
+node_modules/
+.expo/
+dist/
+web-build/
+
+# local IDE / OS
+.vscode/
+.DS_Store
+
+# large scraped assets (keep in repo if you want, but don't upload to build)
+assets/scrapedImages/
+
+# local screenshots / exports in repo root
+*.png
+
+# git metadata
+.git/

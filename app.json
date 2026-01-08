@@ -4,6 +4,14 @@
     "slug": "moriah-faith-connect",
     "scheme": "mfc",
     "version": "1.0.0",
+    "assetBundlePatterns": [
+      "assets/icon.png",
+      "assets/splash-icon.png",
+      "assets/adaptive-icon.png",
+      "assets/mmmbcbg.png",
+      "assets/background.png",
+      "assets/icons/**/*"
+    ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,15 +24,18 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ownerligon.mfc",
+      "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
+      "package": "com.ownerligon.mfc",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "versionCode": 1,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
@@ -32,7 +43,8 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-notifications"
+      "expo-notifications",
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {
