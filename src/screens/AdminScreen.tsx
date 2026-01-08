@@ -7,9 +7,9 @@ import { colors } from '../../theme/colors';
 export function AdminScreen() {
   return (
     <ScreenContainer>
-      <SectionCard title="Admin">
+      <SectionCard title="Tools">
         <Text style={styles.bodyText} allowFontScaling>
-          Admin controls will appear here.
+          Controls will appear here.
         </Text>
       </SectionCard>
     </ScreenContainer>

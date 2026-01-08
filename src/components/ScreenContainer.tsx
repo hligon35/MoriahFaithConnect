@@ -3,6 +3,7 @@ import {
   ImageBackground,
   ScrollView,
   StyleSheet,
+  type ImageSourcePropType,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
@@ -13,17 +14,20 @@ type ScreenContainerProps = {
   children: ReactNode;
   scroll?: boolean;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  backgroundSource?: ImageSourcePropType;
 };
 
 export function ScreenContainer({
   children,
   scroll = true,
   contentContainerStyle,
+  backgroundSource,
 }: ScreenContainerProps) {
+  const source = backgroundSource ?? require('../../assets/mmmbcbg.png');
   if (!scroll) {
     return (
       <ImageBackground
-        source={require('../../assets/mmmbcbg.png')}
+        source={source}
         style={styles.background}
         resizeMode="cover"
       >
@@ -36,7 +40,7 @@ export function ScreenContainer({
 
   return (
     <ImageBackground
-      source={require('../../assets/mmmbcbg.png')}
+      source={source}
       style={styles.background}
       resizeMode="cover"
     >

@@ -8,6 +8,9 @@ export type RootTabParamList = {
 export type RootTabName = keyof RootTabParamList;
 
 export type RootStackParamList = {
+  Login: undefined;
+  Register: undefined;
+  ForgotPassword: undefined;
   Tabs: undefined;
   Account: undefined;
   Admin: undefined;

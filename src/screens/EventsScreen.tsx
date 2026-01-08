@@ -27,21 +27,39 @@ function formatSelectedDayLabel(dateKey: string) {
 }
 
 function parseClockTimeLabel(baseDate: Date, timeLabel: string) {
-  const match = timeLabel.trim().match(/^([0-1]?\d):([0-5]\d)\s*(AM|PM)$/i);
-  if (!match) return null;
+  const trimmed = timeLabel.trim();
 
-  const hours12 = Number(match[1]);
-  const minutes = Number(match[2]);
-  const meridiem = match[3].toUpperCase();
-  if (Number.isNaN(hours12) || Number.isNaN(minutes)) return null;
-  if (hours12 < 1 || hours12 > 12) return null;
+  // 12-hour: 6:30 PM
+  const match12 = trimmed.match(/^([0-1]?\d):([0-5]\d)\s*(AM|PM)$/i);
+  if (match12) {
+    const hours12 = Number(match12[1]);
+    const minutes = Number(match12[2]);
+    const meridiem = match12[3].toUpperCase();
+    if (Number.isNaN(hours12) || Number.isNaN(minutes)) return null;
+    if (hours12 < 1 || hours12 > 12) return null;
 
-  let hours24 = hours12 % 12;
-  if (meridiem === 'PM') hours24 += 12;
+    let hours24 = hours12 % 12;
+    if (meridiem === 'PM') hours24 += 12;
 
-  const dt = new Date(baseDate);
-  dt.setHours(hours24, minutes, 0, 0);
-  return dt;
+    const dt = new Date(baseDate);
+    dt.setHours(hours24, minutes, 0, 0);
+    return dt;
+  }
+
+  // 24-hour: 18:30
+  const match24 = trimmed.match(/^([0-2]?\d):([0-5]\d)$/);
+  if (match24) {
+    const hours24 = Number(match24[1]);
+    const minutes = Number(match24[2]);
+    if (Number.isNaN(hours24) || Number.isNaN(minutes)) return null;
+    if (hours24 < 0 || hours24 > 23) return null;
+
+    const dt = new Date(baseDate);
+    dt.setHours(hours24, minutes, 0, 0);
+    return dt;
+  }
+
+  return null;
 }
 
 function dateFromKey(dateKey: string) {
@@ -125,13 +143,13 @@ export function EventsScreen() {
   return (
     <ScreenContainer>
       {adminEnabled && adminViewOnly && (
-        <SectionCard title="Admin: Events">
+        <SectionCard title="Events">
           <Text style={styles.bodyText} allowFontScaling>
             Tap a date to view that day.
           </Text>
 
           <Calendar
-            accessibilityLabel="Admin monthly calendar"
+            accessibilityLabel="Monthly calendar"
             markedDates={markedDates}
             onDayPress={(day) => {
               setAdminDayKey(day.dateString);
@@ -215,7 +233,7 @@ export function EventsScreen() {
                         accessibilityRole="button"
                         accessibilityLabel={`Edit ${item.title}`}
                         onPress={() => {
-                          const t = startsAt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+                          const t = startsAt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
                           setAdminEditDraft({ id: item.id, title: item.title, timeLabel: t, location: item.location });
                           setAdminEditMode(true);
                         }}
@@ -247,8 +265,6 @@ export function EventsScreen() {
                 <TextInput
                   value={adminEditDraft.title}
                   onChangeText={(t) => setAdminEditDraft((d) => ({ ...d, title: t }))}
-                  placeholder="Bible Study"
-                  placeholderTextColor={colors.text}
                   style={styles.modalInput}
                   accessibilityLabel="Event title"
                 />
@@ -259,8 +275,6 @@ export function EventsScreen() {
                 <TextInput
                   value={adminEditDraft.timeLabel}
                   onChangeText={(t) => setAdminEditDraft((d) => ({ ...d, timeLabel: t }))}
-                  placeholder="6:30 PM"
-                  placeholderTextColor={colors.text}
                   style={styles.modalInput}
                   accessibilityLabel="Event time"
                 />
@@ -271,8 +285,6 @@ export function EventsScreen() {
                 <TextInput
                   value={adminEditDraft.location}
                   onChangeText={(t) => setAdminEditDraft((d) => ({ ...d, location: t }))}
-                  placeholder="Fellowship Hall"
-                  placeholderTextColor={colors.text}
                   style={styles.modalInput}
                   accessibilityLabel="Event location"
                 />
@@ -454,7 +466,7 @@ export function EventsScreen() {
         <Text style={styles.bodyText} allowFontScaling>
           Outreach opportunities will appear here.
         </Text>
-        <PrimaryButton title="View Outreach (Coming Soon)" onPress={() => {}} disabled />
+        <PrimaryButton title="View Outreach" onPress={() => {}} disabled />
       </SectionCard>}
     </ScreenContainer>
   );

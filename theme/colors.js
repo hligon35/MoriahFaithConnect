@@ -5,5 +5,7 @@ export const colors = {
   surface: '#FFFFFF', // White surface
   button: '#6B1E1E', // Rich Burgundy
   highlight: '#D4B15C', // Muted Gold
+  success: '#32CD32', // Lime Green
+  danger: '#FF0000', // Bright Red
   text: '#000000', // Black
 };

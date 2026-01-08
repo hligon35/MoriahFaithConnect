@@ -386,8 +386,6 @@ export function AccountScreen() {
               <TextInput
                 value={draft.email}
                 onChangeText={(v) => setDraft((d) => ({ ...d, email: v }))}
-                placeholder="Email"
-                placeholderTextColor={colors.text}
                 style={styles.modalInput}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -403,8 +401,6 @@ export function AccountScreen() {
               <TextInput
                 value={draft.phone}
                 onChangeText={(v) => setDraft((d) => ({ ...d, phone: v }))}
-                placeholder="Phone"
-                placeholderTextColor={colors.text}
                 style={styles.modalInput}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -420,8 +416,6 @@ export function AccountScreen() {
               <TextInput
                 value={draft.address}
                 onChangeText={(v) => setDraft((d) => ({ ...d, address: v }))}
-                placeholder="Address"
-                placeholderTextColor={colors.text}
                 style={styles.modalInput}
                 autoCapitalize="words"
                 autoCorrect={false}
@@ -436,8 +430,6 @@ export function AccountScreen() {
               <TextInput
                 value={draft.password}
                 onChangeText={(v) => setDraft((d) => ({ ...d, password: v }))}
-                placeholder="New password"
-                placeholderTextColor={colors.text}
                 style={styles.modalInput}
                 secureTextEntry
                 autoCapitalize="none"
@@ -470,8 +462,6 @@ export function AccountScreen() {
               <TextInput
                 value={draft.passwordConfirm}
                 onChangeText={(v) => setDraft((d) => ({ ...d, passwordConfirm: v }))}
-                placeholder="Confirm password"
-                placeholderTextColor={colors.text}
                 style={styles.modalInput}
                 secureTextEntry
                 autoCapitalize="none"

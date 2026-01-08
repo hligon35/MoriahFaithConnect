@@ -18,6 +18,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from './types';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAdmin } from '../state/AdminContext';
+import { useAuth } from '../state/AuthContext';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
@@ -104,6 +105,7 @@ export function TabsNavigator() {
   const insets = useSafeAreaInsets();
   const [devMenuOpen, setDevMenuOpen] = useState(false);
   const { adminEnabled, setAdminEnabled, setAdminViewOnly } = useAdmin();
+  const { user } = useAuth();
   const extraDrop = Math.round(56 * 0.25);
   const devMenuTop = insets.top + 56 + (adminEnabled ? styles.headerTotalsReservedHeight.height : 0) + extraDrop;
 
@@ -124,6 +126,7 @@ export function TabsNavigator() {
           },
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.highlight,
+          tabBarActiveBackgroundColor: colors.highlight,
           tabBarLabelStyle: { fontSize: 14, fontWeight: '800' },
         }}
       >
@@ -132,7 +135,11 @@ export function TabsNavigator() {
           component={HomeScreen}
           options={{
             title: 'Home',
-            tabBarIcon: ({ color, size }) => <MaterialIcons name="home" size={size} color={color} />,
+            tabBarIcon: ({ color, size, focused }) => (
+              <View style={[styles.tabIconWrap, focused && styles.tabIconWrapActive]}>
+                <MaterialIcons name="home" size={size} color={color} />
+              </View>
+            ),
           }}
         />
         <Tab.Screen
@@ -140,7 +147,11 @@ export function TabsNavigator() {
           component={WatchScreen}
           options={{
             title: 'Watch',
-            tabBarIcon: ({ color, size }) => <MaterialIcons name="ondemand-video" size={size} color={color} />,
+            tabBarIcon: ({ color, size, focused }) => (
+              <View style={[styles.tabIconWrap, focused && styles.tabIconWrapActive]}>
+                <MaterialIcons name="ondemand-video" size={size} color={color} />
+              </View>
+            ),
           }}
         />
         <Tab.Screen
@@ -148,7 +159,11 @@ export function TabsNavigator() {
           component={CommunityScreen}
           options={{
             title: 'Community',
-            tabBarIcon: ({ color, size }) => <MaterialIcons name="forum" size={size} color={color} />,
+            tabBarIcon: ({ color, size, focused }) => (
+              <View style={[styles.tabIconWrap, focused && styles.tabIconWrapActive]}>
+                <MaterialIcons name="forum" size={size} color={color} />
+              </View>
+            ),
           }}
         />
         <Tab.Screen
@@ -156,7 +171,11 @@ export function TabsNavigator() {
           component={EventsScreen}
           options={{
             title: 'Events',
-            tabBarIcon: ({ color, size }) => <MaterialIcons name="event" size={size} color={color} />,
+            tabBarIcon: ({ color, size, focused }) => (
+              <View style={[styles.tabIconWrap, focused && styles.tabIconWrapActive]}>
+                <MaterialIcons name="event" size={size} color={color} />
+              </View>
+            ),
           }}
         />
       </Tab.Navigator>
@@ -188,15 +207,17 @@ export function TabsNavigator() {
                 stackNav.navigate('Tabs');
               }}
             />
-            <PrimaryButton
-              title="Admin View"
-              onPress={() => {
-                setDevMenuOpen(false);
-                setAdminEnabled(true);
-                setAdminViewOnly(true);
-                stackNav.navigate('Tabs');
-              }}
-            />
+            {user?.role === 'admin' && (
+              <PrimaryButton
+                title="Staff View"
+                onPress={() => {
+                  setDevMenuOpen(false);
+                  setAdminEnabled(true);
+                  setAdminViewOnly(true);
+                  stackNav.navigate('Tabs');
+                }}
+              />
+            )}
           </View>
         </View>
       </Modal>
@@ -205,6 +226,16 @@ export function TabsNavigator() {
 }
 
 const styles = StyleSheet.create({
+    tabIconWrap: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: 6,
+      borderTopWidth: 3,
+      borderTopColor: 'transparent',
+    },
+    tabIconWrapActive: {
+      borderTopColor: colors.primary,
+    },
   headerWrap: {
     backgroundColor: colors.text,
   },

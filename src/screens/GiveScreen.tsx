@@ -35,7 +35,7 @@ export function GiveScreen() {
       )}
 
       {adminEnabled && (
-        <SectionCard title="Admin: Collections">
+        <SectionCard title="Collections">
           <Text style={styles.bodyText} allowFontScaling>
             Record donations and tithes, then export totals and reports.
           </Text>
@@ -56,7 +56,6 @@ export function GiveScreen() {
             <TextInput
               value={donationDraft}
               onChangeText={setDonationDraft}
-              placeholder="0.00"
               placeholderTextColor={colors.text}
               keyboardType="decimal-pad"
               style={styles.adminInput}
@@ -86,7 +85,6 @@ export function GiveScreen() {
             <TextInput
               value={titheDraft}
               onChangeText={setTitheDraft}
-              placeholder="0.00"
               placeholderTextColor={colors.text}
               keyboardType="decimal-pad"
               style={styles.adminInput}
@@ -145,14 +143,14 @@ export function GiveScreen() {
             <Text style={styles.bodyText} allowFontScaling>
               Donation options will appear here.
             </Text>
-            <PrimaryButton title="Give Now (Coming Soon)" onPress={() => {}} disabled />
+             <PrimaryButton title="Give Now" onPress={() => {}} disabled />
           </SectionCard>
 
           <SectionCard title="Receipts">
             <Text style={styles.bodyText} allowFontScaling>
               Your giving history and receipts will appear here.
             </Text>
-            <PrimaryButton title="View Receipts (Coming Soon)" onPress={() => {}} disabled />
+             <PrimaryButton title="View Receipts" onPress={() => {}} disabled />
           </SectionCard>
         </>
       )}

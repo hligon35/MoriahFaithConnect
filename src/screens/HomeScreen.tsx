@@ -414,8 +414,6 @@ export function HomeScreen() {
                     <TextInput
                       value={itineraryEditDraft}
                       onChangeText={setItineraryEditDraft}
-                      placeholder="Welcome\nPrayer\nWorship\nMessage\nBenediction"
-                      placeholderTextColor={colors.text}
                       style={styles.modalTextArea}
                       multiline
                       accessibilityLabel="Service itinerary"
@@ -489,7 +487,7 @@ export function HomeScreen() {
         {adminEnabled && (
           <>
             <SectionCard
-              title="Admin: Word of the Day"
+              title="Word of the Day"
               headerRight={
                 <IconButton
                   icon="add"
@@ -511,7 +509,7 @@ export function HomeScreen() {
             </SectionCard>
 
             <SectionCard
-              title="Admin: Announcements"
+              title="Announcements"
               headerRight={
                 <IconButton
                   icon="add"
@@ -555,7 +553,7 @@ export function HomeScreen() {
             </SectionCard>
 
             <SectionCard
-              title="Admin: Services"
+              title="Services"
               headerRight={
                 <IconButton
                   icon="add"
@@ -613,8 +611,6 @@ export function HomeScreen() {
               <TextInput
                 value={adminWordDraft.dateKey}
                 onChangeText={(t) => setAdminWordDraft((d) => ({ ...d, dateKey: t }))}
-                placeholder={dateKey}
-                placeholderTextColor={colors.text}
                 style={styles.modalInput}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -627,8 +623,6 @@ export function HomeScreen() {
               <TextInput
                 value={adminWordDraft.scripture}
                 onChangeText={(t) => setAdminWordDraft((d) => ({ ...d, scripture: t }))}
-                placeholder="Isaiah 40:31 (KJV)"
-                placeholderTextColor={colors.text}
                 style={styles.modalInput}
                 accessibilityLabel="Scripture reference"
               />
@@ -639,8 +633,6 @@ export function HomeScreen() {
               <TextInput
                 value={adminWordDraft.message}
                 onChangeText={(t) => setAdminWordDraft((d) => ({ ...d, message: t }))}
-                placeholder="Verse text"
-                placeholderTextColor={colors.text}
                 style={styles.modalTextArea}
                 multiline
                 accessibilityLabel="Word of the day message"
@@ -706,8 +698,6 @@ export function HomeScreen() {
               <TextInput
                 value={adminAnnouncementDraft.title}
                 onChangeText={(t) => setAdminAnnouncementDraft((d) => ({ ...d, title: t }))}
-                placeholder="Service Time Reminder"
-                placeholderTextColor={colors.text}
                 style={styles.modalInput}
                 accessibilityLabel="Announcement title"
               />
@@ -718,8 +708,6 @@ export function HomeScreen() {
               <TextInput
                 value={adminAnnouncementDraft.body}
                 onChangeText={(t) => setAdminAnnouncementDraft((d) => ({ ...d, body: t }))}
-                placeholder="Announcement details"
-                placeholderTextColor={colors.text}
                 style={styles.modalTextArea}
                 multiline
                 accessibilityLabel="Announcement body"
@@ -830,8 +818,6 @@ export function HomeScreen() {
               <TextInput
                 value={adminServiceDraft.timeLabel}
                 onChangeText={(t) => setAdminServiceDraft((d) => ({ ...d, timeLabel: t }))}
-                placeholder="11:00 AM"
-                placeholderTextColor={colors.text}
                 style={styles.modalInput}
                 accessibilityLabel="Service time"
               />
@@ -857,8 +843,6 @@ export function HomeScreen() {
               <TextInput
                 value={adminServiceDraft.itineraryText}
                 onChangeText={(t) => setAdminServiceDraft((d) => ({ ...d, itineraryText: t }))}
-                placeholder="Welcome\nPrayer\nWorship\nMessage\nBenediction"
-                placeholderTextColor={colors.text}
                 style={styles.modalTextArea}
                 multiline
                 accessibilityLabel="Service itinerary"
@@ -912,44 +896,46 @@ export function HomeScreen() {
           animationType="fade"
           onRequestClose={() => setServiceTitlePickerOpen(false)}
         >
-          <Pressable style={styles.modalBackdrop} onPress={() => setServiceTitlePickerOpen(false)} />
-          <View style={styles.pickerCard} accessibilityViewIsModal>
-            <Text style={styles.pickerTitle} allowFontScaling>
-              Service Title
-            </Text>
-            <View style={styles.pickerDivider} />
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="New service"
-              onPress={() => {
-                setServiceTitlePickerOpen(false);
-                setNewServiceTitleDraft('');
-                setNewServiceOpen(true);
-              }}
-              style={({ pressed }) => [styles.pickerRow, pressed && styles.pickerRowPressed]}
-            >
-              <Text style={styles.pickerRowText} allowFontScaling>
-                New service
+          <View style={styles.modalBackdrop}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setServiceTitlePickerOpen(false)} />
+            <View style={styles.pickerCard} accessibilityViewIsModal>
+              <Text style={styles.pickerTitle} allowFontScaling>
+                Service Title
               </Text>
-            </Pressable>
+              <View style={styles.pickerDivider} />
 
-            {serviceTitleOptions.map((t) => (
               <Pressable
-                key={t}
                 accessibilityRole="button"
-                accessibilityLabel={`Select ${t}`}
+                accessibilityLabel="New service"
                 onPress={() => {
-                  setAdminServiceDraft((d) => ({ ...d, title: t }));
                   setServiceTitlePickerOpen(false);
+                  setNewServiceTitleDraft('');
+                  setNewServiceOpen(true);
                 }}
                 style={({ pressed }) => [styles.pickerRow, pressed && styles.pickerRowPressed]}
               >
-                <Text style={styles.pickerRowText} allowFontScaling numberOfLines={1}>
-                  {t}
+                <Text style={styles.pickerRowText} allowFontScaling>
+                  New service
                 </Text>
               </Pressable>
-            ))}
+
+              {serviceTitleOptions.map((t) => (
+                <Pressable
+                  key={t}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Select ${t}`}
+                  onPress={() => {
+                    setAdminServiceDraft((d) => ({ ...d, title: t }));
+                    setServiceTitlePickerOpen(false);
+                  }}
+                  style={({ pressed }) => [styles.pickerRow, pressed && styles.pickerRowPressed]}
+                >
+                  <Text style={styles.pickerRowText} allowFontScaling numberOfLines={1}>
+                    {t}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
         </Modal>
 
@@ -959,28 +945,30 @@ export function HomeScreen() {
           animationType="fade"
           onRequestClose={() => setServiceDayPickerOpen(false)}
         >
-          <Pressable style={styles.modalBackdrop} onPress={() => setServiceDayPickerOpen(false)} />
-          <View style={styles.pickerCard} accessibilityViewIsModal>
-            <Text style={styles.pickerTitle} allowFontScaling>
-              Day of Week
-            </Text>
-            <View style={styles.pickerDivider} />
-            {[0, 1, 2, 3, 4, 5, 6].map((d) => (
-              <Pressable
-                key={d}
-                accessibilityRole="button"
-                accessibilityLabel={`Select ${weekdayLabel(d)}`}
-                onPress={() => {
-                  setAdminServiceDay(d);
-                  setServiceDayPickerOpen(false);
-                }}
-                style={({ pressed }) => [styles.pickerRow, pressed && styles.pickerRowPressed]}
-              >
-                <Text style={styles.pickerRowText} allowFontScaling>
-                  {weekdayLabel(d)}
-                </Text>
-              </Pressable>
-            ))}
+          <View style={styles.modalBackdrop}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setServiceDayPickerOpen(false)} />
+            <View style={styles.pickerCard} accessibilityViewIsModal>
+              <Text style={styles.pickerTitle} allowFontScaling>
+                Day of Week
+              </Text>
+              <View style={styles.pickerDivider} />
+              {[0, 1, 2, 3, 4, 5, 6].map((d) => (
+                <Pressable
+                  key={d}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Select ${weekdayLabel(d)}`}
+                  onPress={() => {
+                    setAdminServiceDay(d);
+                    setServiceDayPickerOpen(false);
+                  }}
+                  style={({ pressed }) => [styles.pickerRow, pressed && styles.pickerRowPressed]}
+                >
+                  <Text style={styles.pickerRowText} allowFontScaling>
+                    {weekdayLabel(d)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
         </Modal>
 
@@ -990,41 +978,43 @@ export function HomeScreen() {
           animationType="fade"
           onRequestClose={() => setServiceLocationPickerOpen(false)}
         >
-          <Pressable style={styles.modalBackdrop} onPress={() => setServiceLocationPickerOpen(false)} />
-          <View style={styles.pickerCard} accessibilityViewIsModal>
-            <Text style={styles.pickerTitle} allowFontScaling>
-              Location
-            </Text>
-            <View style={styles.pickerDivider} />
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="On-site"
-              onPress={() => {
-                setAdminServiceDraft((d) => ({ ...d, locationLabel: 'On-site' }));
-                setServiceLocationPickerOpen(false);
-              }}
-              style={({ pressed }) => [styles.pickerRow, pressed && styles.pickerRowPressed]}
-            >
-              <Text style={styles.pickerRowText} allowFontScaling>
-                On-site
+          <View style={styles.modalBackdrop}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setServiceLocationPickerOpen(false)} />
+            <View style={styles.pickerCard} accessibilityViewIsModal>
+              <Text style={styles.pickerTitle} allowFontScaling>
+                Location
               </Text>
-            </Pressable>
+              <View style={styles.pickerDivider} />
 
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Off-site"
-              onPress={() => {
-                setServiceLocationPickerOpen(false);
-                setOffsiteLocationDraft('');
-                setOffsiteOpen(true);
-              }}
-              style={({ pressed }) => [styles.pickerRow, pressed && styles.pickerRowPressed]}
-            >
-              <Text style={styles.pickerRowText} allowFontScaling>
-                Off-site
-              </Text>
-            </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="On-site"
+                onPress={() => {
+                  setAdminServiceDraft((d) => ({ ...d, locationLabel: 'On-site' }));
+                  setServiceLocationPickerOpen(false);
+                }}
+                style={({ pressed }) => [styles.pickerRow, pressed && styles.pickerRowPressed]}
+              >
+                <Text style={styles.pickerRowText} allowFontScaling>
+                  On-site
+                </Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Off-site"
+                onPress={() => {
+                  setServiceLocationPickerOpen(false);
+                  setOffsiteLocationDraft('');
+                  setOffsiteOpen(true);
+                }}
+                style={({ pressed }) => [styles.pickerRow, pressed && styles.pickerRowPressed]}
+              >
+                <Text style={styles.pickerRowText} allowFontScaling>
+                  Off-site
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </Modal>
 
@@ -1062,8 +1052,6 @@ export function HomeScreen() {
               <TextInput
                 value={newServiceTitleDraft}
                 onChangeText={setNewServiceTitleDraft}
-                placeholder="New Service Name"
-                placeholderTextColor={colors.text}
                 style={styles.modalInput}
                 accessibilityLabel="New service title"
               />
@@ -1123,8 +1111,6 @@ export function HomeScreen() {
               <TextInput
                 value={offsiteLocationDraft}
                 onChangeText={setOffsiteLocationDraft}
-                placeholder="Community Center"
-                placeholderTextColor={colors.text}
                 style={styles.modalInput}
                 accessibilityLabel="Off-site location"
               />

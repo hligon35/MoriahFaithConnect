@@ -112,7 +112,6 @@ export function CommunityScreen() {
     })();
   }, []);
 
-                  setEditingMemberId(null);
   useEffect(() => {
     (async () => {
       const dir = await loadDirectoryOverride();
@@ -128,8 +127,81 @@ export function CommunityScreen() {
 
   const filteredDirectory = useMemo(() => {
     const q = query.trim().toLowerCase();
-                const checked = !!selectedMemberIds[m.id];
     if (!q) return directoryMembers;
+
+    return directoryMembers.filter((m) => {
+      const haystack = `${m.name} ${m.role}`.toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [query, directoryMembers]);
+
+  const selectedVisibility = useMemo(() => {
+    return {
+      email: myPrivacy.email && !!selected?.email,
+      phone: myPrivacy.phone && !!selected?.phone,
+      address: myPrivacy.address && !!selected?.address,
+    };
+  }, [myPrivacy, selected]);
+
+  return (
+    <ScreenContainer>
+      {adminEnabled && adminViewOnly ? (
+        <>
+          {Object.values(selectedMemberIds).some(Boolean) && (
+            <PrimaryButton
+              title="Delete Selected"
+              onPress={() => {
+                const ids = Object.entries(selectedMemberIds)
+                  .filter(([, v]) => !!v)
+                  .map(([k]) => k);
+                if (!ids.length) return;
+
+                Alert.alert('Delete selected members?', `Count: ${ids.length}`, [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                      const next = directoryMembers.filter((x) => !ids.includes(x.id));
+                      setDirectoryMembers(next);
+                      await saveDirectoryOverride(next);
+                      setSelectedMemberIds({});
+                    },
+                  },
+                ]);
+              }}
+            />
+          )}
+          <SectionCard
+            title="Directory"
+            titleRight={
+              <View style={styles.titleCountBadge} accessibilityRole="text">
+                <Text style={styles.titleCountText} allowFontScaling>
+                  {directoryMembers.length}
+                </Text>
+              </View>
+            }
+            headerRight={
+              <IconButton
+                icon="add"
+                accessibilityLabel="Add directory member"
+                onPress={() => {
+                  setEditingMemberId(null);
+                  setMemberDraft({ name: '', role: '', email: '', phone: '', address: '' });
+                  setAddMemberOpen(true);
+                }}
+                iconColor={colors.primary}
+                variant="outlined"
+                iconSize={22}
+                buttonSize={34}
+              />
+            }
+          >
+            <View style={styles.adminList}>
+              {directoryMembers.slice(0, 12).map((m) => {
+                const checked = !!selectedMemberIds[m.id];
+
+                return (
                   <View key={m.id} style={styles.adminRow}>
                     <IconButton
                       icon={checked ? 'check-box' : 'check-box-outline-blank'}
@@ -197,81 +269,20 @@ export function CommunityScreen() {
                       variant="outlined"
                     />
                   </View>
-  return (
-    <ScreenContainer>
-      {adminEnabled && adminViewOnly ? (
-
-            {Object.values(selectedMemberIds).some(Boolean) && (
-              <PrimaryButton
-                title="Delete Selected"
-                onPress={() => {
-                  const ids = Object.entries(selectedMemberIds)
-                    .filter(([, v]) => !!v)
-                    .map(([k]) => k);
-                  if (!ids.length) return;
-
-                  Alert.alert('Delete selected members?', `Count: ${ids.length}`, [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Delete',
-                      style: 'destructive',
-                      onPress: async () => {
-                        const next = directoryMembers.filter((x) => !ids.includes(x.id));
-                        setDirectoryMembers(next);
-                        await saveDirectoryOverride(next);
-                        setSelectedMemberIds({});
-                      },
-                    },
-                  ]);
-                }}
-              />
-            )}
-        <>
-          <SectionCard
-            title="Admin: Directory"
-            headerRight={
-              <IconButton
-                icon="add"
-                accessibilityLabel="Add directory member"
-                onPress={() => {
-                  setMemberDraft({ name: '', role: '', email: '', phone: '', address: '' });
-                  setAddMemberOpen(true);
-                }}
-                iconColor={colors.primary}
-                variant="outlined"
-                iconSize={22}
-                buttonSize={34}
-              />
-            }
-          >
-            <Text style={styles.bodyText} allowFontScaling>
-              Members: {directoryMembers.length}
-            </Text>
-            <View style={styles.adminList}>
-              {directoryMembers.slice(0, 12).map((m) => (
-                <View key={m.id} style={styles.adminRow}>
-                  <Text style={styles.adminRowText} allowFontScaling numberOfLines={1}>
-                    {m.name} — {m.role}
-                  </Text>
-                  <IconButton
-                    icon="delete"
-                    accessibilityLabel={`Delete directory member ${m.name}`}
-                    onPress={async () => {
-                      const next = directoryMembers.filter((x) => x.id !== m.id);
-                      setDirectoryMembers(next);
-                      await saveDirectoryOverride(next);
-                    }}
-                    iconSize={22}
-                    buttonSize={34}
-                    variant="outlined"
-                  />
-                </View>
-              ))}
+                );
+              })}
             </View>
           </SectionCard>
 
           <SectionCard
-            title="Admin: Ministries"
+            title="Ministries"
+            titleRight={
+              <View style={styles.titleCountBadge} accessibilityRole="text">
+                <Text style={styles.titleCountText} allowFontScaling>
+                  {ministryItems.length}
+                </Text>
+              </View>
+            }
             headerRight={
               <IconButton
                 icon="add"
@@ -296,9 +307,6 @@ export function CommunityScreen() {
               />
             }
           >
-            <Text style={styles.bodyText} allowFontScaling>
-              Ministries: {ministryItems.length}
-            </Text>
             <View style={styles.adminList}>
               {ministryItems.slice(0, 12).map((m) => {
                 const checked = !!selectedMinistryIds[m.id];
@@ -404,7 +412,14 @@ export function CommunityScreen() {
           </SectionCard>
 
           <SectionCard
-            title="Admin: Prayer Wall"
+            title="Prayer Wall"
+            titleRight={
+              <View style={styles.titleCountBadge} accessibilityRole="text">
+                <Text style={styles.titleCountText} allowFontScaling>
+                  {prayers.length}
+                </Text>
+              </View>
+            }
             headerRight={
               <IconButton
                 icon="add"
@@ -420,9 +435,6 @@ export function CommunityScreen() {
               />
             }
           >
-            <Text style={styles.bodyText} allowFontScaling>
-              Names: {prayers.length}
-            </Text>
             <View style={styles.adminList}>
               {prayers.slice(0, 20).map((p) => {
                 const checked = !!selectedPrayerIds[p.id];
@@ -551,8 +563,6 @@ export function CommunityScreen() {
               <TextInput
                 value={query}
                 onChangeText={setQuery}
-                placeholder="Search by name or role"
-                placeholderTextColor={colors.text}
                 style={styles.searchInput}
                 autoCorrect={false}
                 autoCapitalize="none"
@@ -755,8 +765,6 @@ export function CommunityScreen() {
             <TextInput
               value={prayerNameDraft}
               onChangeText={setPrayerNameDraft}
-              placeholder="Name"
-              placeholderTextColor={colors.text}
               style={styles.addPrayerInput}
               autoCorrect={false}
               autoCapitalize="words"
@@ -829,8 +837,6 @@ export function CommunityScreen() {
             <TextInput
               value={memberDraft.name}
               onChangeText={(t) => setMemberDraft((d) => ({ ...d, name: t }))}
-              placeholder="Name"
-              placeholderTextColor={colors.text}
               style={styles.addPrayerInput}
               autoCorrect={false}
               autoCapitalize="words"
@@ -839,8 +845,6 @@ export function CommunityScreen() {
             <TextInput
               value={memberDraft.role}
               onChangeText={(t) => setMemberDraft((d) => ({ ...d, role: t }))}
-              placeholder="Role"
-              placeholderTextColor={colors.text}
               style={styles.addPrayerInput}
               autoCorrect={false}
               autoCapitalize="words"
@@ -927,8 +931,6 @@ export function CommunityScreen() {
             <TextInput
               value={ministryDraft.name}
               onChangeText={(t) => setMinistryDraft((d) => ({ ...d, name: t }))}
-              placeholder="Ministry name"
-              placeholderTextColor={colors.text}
               style={styles.addPrayerInput}
               autoCorrect={false}
               autoCapitalize="words"
@@ -937,8 +939,6 @@ export function CommunityScreen() {
             <TextInput
               value={ministryDraft.summary}
               onChangeText={(t) => setMinistryDraft((d) => ({ ...d, summary: t }))}
-              placeholder="Summary"
-              placeholderTextColor={colors.text}
               style={styles.addPrayerInput}
               accessibilityLabel="Ministry summary"
             />
@@ -1201,6 +1201,22 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '900',
   },
+  titleCountBadge: {
+    backgroundColor: colors.text,
+    borderColor: colors.primary,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    minWidth: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleCountText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '900',
+  },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1290,9 +1306,6 @@ const styles = StyleSheet.create({
   adminRowMain: {
     flex: 1,
     paddingVertical: 6,
-  },
-  pressed: {
-    opacity: 0.7,
   },
   adminRow: {
     flexDirection: 'row',

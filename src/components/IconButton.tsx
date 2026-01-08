@@ -14,6 +14,8 @@ type IconButtonProps = {
   iconSize?: number;
   buttonSize?: number;
   variant?: 'plain' | 'outlined';
+  outlineColor?: string;
+  outlinedBackgroundColor?: string;
 };
 
 export function IconButton({
@@ -25,6 +27,8 @@ export function IconButton({
   iconSize = 28,
   buttonSize = 44,
   variant = 'plain',
+  outlineColor,
+  outlinedBackgroundColor,
 }: IconButtonProps) {
   return (
     <Pressable
@@ -35,7 +39,11 @@ export function IconButton({
       hitSlop={12}
       style={({ pressed }) => [
         styles.button,
-        variant === 'outlined' && styles.buttonOutlined,
+        variant === 'outlined' && [
+          styles.buttonOutlined,
+          outlineColor ? { borderColor: outlineColor } : null,
+          outlinedBackgroundColor ? { backgroundColor: outlinedBackgroundColor } : null,
+        ],
         pressed && !disabled && styles.pressed,
         disabled && styles.disabled,
       ]}

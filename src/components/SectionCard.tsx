@@ -7,16 +7,20 @@ type SectionCardProps = {
   title: string;
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
+  titleRight?: ReactNode;
   headerRight?: ReactNode;
 };
 
-export function SectionCard({ title, children, style, headerRight }: SectionCardProps) {
+export function SectionCard({ title, children, style, titleRight, headerRight }: SectionCardProps) {
   return (
     <View style={[styles.card, style]} accessibilityRole="summary">
       <View style={styles.header}>
-        <Text style={styles.title} allowFontScaling>
-          {title}
-        </Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title} allowFontScaling>
+            {title}
+          </Text>
+          {!!titleRight && <View style={styles.titleRight}>{titleRight}</View>}
+        </View>
         {!!headerRight && <View style={styles.headerRight}>{headerRight}</View>}
       </View>
       <View style={styles.titleDivider} />
@@ -37,11 +41,25 @@ const styles = StyleSheet.create({
   header: {
     position: 'relative',
     justifyContent: 'center',
+    minHeight: 44,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 42,
   },
   headerRight: {
     position: 'absolute',
     right: 0,
-    top: -6,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  titleRight: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     color: colors.text,
