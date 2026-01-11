@@ -13,7 +13,7 @@
       "assets/icons/**/*"
     ],
     "orientation": "portrait",
-    "icon": "./assets/background.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
